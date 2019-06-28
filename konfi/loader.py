@@ -34,8 +34,13 @@ class Loader:
             template = type(template)
 
         for source in self._sources:
-            # TODO add more details to exception
-            source.load_into(obj, template)
+            try:
+                source.load_into(obj, template)
+            except Exception:
+                # TODO add more details to exception
+                raise
+
+        # TODO check if everything has been set and set optional fields
 
         # TODO call post load hook or something
 

@@ -9,22 +9,22 @@ _MISSING = object()
 
 
 class UnboundField:
-    name: Optional[str]
-    description: Optional[str]
+    key: Optional[str]
+    comment: Optional[str]
 
     default_value: Any
     default_factory: Optional[ValueFactory]
 
-    # TODO ability to specify register_converter manually
+    # TODO ability to specify converter manually
 
     def __init__(self, *,
-                 name: str = None,
-                 description: str = None,
+                 key: str = None,
+                 comment: str = None,
                  default_value: Any = _MISSING,
                  default_factory: ValueFactory = None,
                  ) -> None:
-        self.name = name
-        self.description = description
+        self.key = key
+        self.comment = comment
 
         if not (default_value is _MISSING and default_factory is None):
             raise ValueError("can't specify both default factory and value!")
@@ -46,7 +46,7 @@ class UnboundField:
 
 class Field(UnboundField):
     attribute: str
-    name: str
+    config_key: str
     description: Optional[str]
 
     value_type: Type
@@ -54,13 +54,13 @@ class Field(UnboundField):
 
     def __init__(self, *,
                  attribute: str,
-                 name: str = None,
-                 description: str = None,
+                 key: str = None,
+                 comment: str = None,
                  value_type: Type,
                  default_value: Any = _MISSING,
                  default_factory: ValueFactory = None,
                  ) -> None:
-        super().__init__(name=name, description=description,
+        super().__init__(key=key, comment=comment,
                          default_value=default_value, default_factory=default_factory)
         self.attribute = attribute
         self.value_type = value_type
@@ -69,20 +69,20 @@ class Field(UnboundField):
 def upgrade_unbound(unbound: UnboundField, *, attribute: str, value_type: Type) -> Field:
     return Field(
         attribute=attribute,
-        name=unbound.name,
-        description=unbound.description,
+        key=unbound.key,
+        comment=unbound.comment,
         value_type=value_type,
         default_value=unbound.default_value,
         default_factory=unbound.default_factory,
     )
 
 
-def field(*, name: str = None, desc: str = None,
+def field(*, key: str = None, comment: str = None,
           default: Any = _MISSING, factory: ValueFactory = None,
           ) -> UnboundField:
     return UnboundField(
-        name=name,
-        description=desc,
+        key=key,
+        comment=comment,
         default_value=default,
         default_factory=factory,
     )

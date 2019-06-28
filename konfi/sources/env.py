@@ -93,7 +93,17 @@ class Env(konfi.SourceABC):
             # TODO le raise
             raise
 
-        converter.set_value(parent, field, value)
+        converter.load_field_value(parent, field, value)
 
     def load_into(self, obj: Any, template: Type) -> None:
-        pass
+        self.load_child([], obj, konfi.fields(template))
+
+    def load_child(self, path: List[str], parent: Any, fields: Iterable[konfi.Field]) -> None:
+        fields_by_key = {field.key: field for field in fields}
+        for key, field in fields_by_key.items():
+            key_path = [*path, key]
+            if konfi.is_template(field.value_type):
+                # TODO write proper iterator
+                self.load_child(key_path, None, konfi.fields(field.value_type))
+            else:
+                self.load_path(key_path, parent, field)

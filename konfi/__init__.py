@@ -1,6 +1,6 @@
 """konfi is a config parser"""
 
-from .converter import ConverterABC, ConverterFunc, ConverterType, register_converter
+from .converter import ConverterABC, ConverterFunc, ConverterType, has_converter, register_converter
 from .field import Field, ValueFactory, field
 from .loader import Loader
 from .source import SourceABC

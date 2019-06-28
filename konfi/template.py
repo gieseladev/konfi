@@ -1,9 +1,11 @@
 import inspect
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
+from .converter import has_converter
 from .field import Field, UnboundField, upgrade_unbound
 
-__all__ = ["template", "is_template", "fields"]
+__all__ = ["template", "is_template",
+           "fields", "get_field"]
 
 _FIELDS_ATTR = "__template_fields__"
 
@@ -13,7 +15,9 @@ def _make_fields(cls: type) -> Dict[str, Field]:
 
     cls_annotations = cls.__dict__.get("__annotations__", {})
     for attr, typ in cls_annotations.items():
-        # TODO whether typ is even possible
+        if not has_converter(typ):
+            # TODO raise
+            raise Exception
 
         try:
             value = getattr(cls, attr)
@@ -51,8 +55,16 @@ def is_template(obj: Any) -> bool:
     return hasattr(obj, _FIELDS_ATTR)
 
 
-def fields(obj: Any) -> Tuple[Field]:
+def _get_fields(obj: Any) -> Dict[str, Field]:
     try:
-        return tuple(getattr(obj, _FIELDS_ATTR))
+        return getattr(obj, _FIELDS_ATTR)
     except AttributeError:
         raise TypeError("must be called with a template")
+
+
+def fields(obj: Any) -> Tuple[Field, ...]:
+    return tuple(_get_fields(obj).values())
+
+
+def get_field(obj: Any, attr: str) -> Optional[Field]:
+    return _get_fields(obj).get(attr)
