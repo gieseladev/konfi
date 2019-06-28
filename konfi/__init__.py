@@ -1,0 +1,15 @@
+"""konfi is a config parser"""
+
+from .converter import ConverterABC, ConverterFunc, ConverterType, register_converter
+from .field import Field, ValueFactory, field
+from .loader import Loader
+from .source import SourceABC
+from .sources import *
+from .template import fields, is_template, template
+
+__version__ = "0.0.1"
+__author__ = "Giesela Inc."
+
+default_loader = Loader()
+set_sources = default_loader.set_sources
+load = default_loader.load

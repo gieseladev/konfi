@@ -1,2 +1,3 @@
 # konfi
-Config parser
+ 
+ Cute config parser.
