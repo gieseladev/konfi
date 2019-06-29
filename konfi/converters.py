@@ -1,8 +1,12 @@
-from typing import Any, Iterable, List, TypeVar
+import enum
+from typing import Any, Iterable, List, Optional, TypeVar, cast
 
 from .converter import ComplexConverterABC, convert_value, register_converter
 
 T = TypeVar("T")
+
+for const_converter in {str, int, float}:
+    register_converter(const_converter)(const_converter)
 
 
 @register_converter(None)
@@ -24,7 +28,7 @@ def list_converter(value: Any) -> List:
 
 
 @register_converter()
-class IterableConverter(ComplexConverterABC[Iterable[T]]):
+class IterableConverter(ComplexConverterABC):
     def can_convert(self, target: type) -> bool:
         pass
 
@@ -40,3 +44,39 @@ class IterableConverter(ComplexConverterABC[Iterable[T]]):
             final_list.append(v)
 
         return final_list
+
+
+@register_converter()
+class EnumConverter(ComplexConverterABC):
+    def can_convert(self, target: type) -> bool:
+        return issubclass(target, enum.Enum)
+
+    def convert(self, value: Any, target: enum.EnumMeta) -> enum.Enum:
+        try:
+            return target[value]
+        except KeyError:
+            pass
+
+        first_name_match: Optional[enum.Enum] = None
+        first_value_match: Optional[enum.Enum] = None
+
+        value_lower = value.lower() if isinstance(value, str) else value
+
+        for enum_field in target:
+            enum_field = cast(enum.Enum, enum_field)
+
+            if first_name_match is None and value_lower == enum_field.name.lower():
+                first_name_match = enum_field
+                break
+
+            if first_value_match is None and value == enum_field.value:
+                first_value_match = enum_field
+
+        if first_name_match is not None:
+            return first_name_match
+
+        if first_value_match is not None:
+            return first_value_match
+
+        # TODO I dunno what to raise
+        raise Exception

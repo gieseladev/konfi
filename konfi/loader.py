@@ -2,7 +2,7 @@ import inspect
 from typing import List, Type, TypeVar, Union
 
 from .source import SourceABC
-from .template import is_template
+from .template import ensure_complete, is_template_like
 
 __all__ = ["Loader"]
 
@@ -21,11 +21,11 @@ class Loader:
     def load(self, template: Union[Type[TT], TT]) -> TT:
         if not self._sources:
             # TODO raise something?
-            raise
+            raise Exception
 
-        if not is_template(template):
+        if not is_template_like(template):
             # TODO raise something else
-            raise
+            raise Exception
 
         if inspect.isclass(template):
             obj = object.__new__(template)
@@ -40,8 +40,8 @@ class Loader:
                 # TODO add more details to exception
                 raise
 
-        # TODO check if everything has been set and set optional fields
+        ensure_complete(obj, template)
 
-        # TODO call post load hook or something
+        # TODO add hooks to the entire process
 
         return obj

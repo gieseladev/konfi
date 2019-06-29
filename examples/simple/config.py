@@ -2,15 +2,15 @@ import konfi
 
 
 @konfi.template()
-class Credentials:
-    user: str
-    password: str
+class UserInfo:
+    name: str
+    country: str
 
 
 @konfi.template()
 class AppConfig:
     name: str = "konfi"
-    creds: Credentials
+    user: UserInfo
 
 
 if __name__ == "__main__":
@@ -23,4 +23,5 @@ if __name__ == "__main__":
     # can't deal with the function alias
     config: AppConfig = konfi.load(AppConfig)
 
-    print(f"Hello {config.creds.name} from {config.name}")
+    print(f"Hello {config.user.name} from {config.user.country}")
+    print(f"Welcome to {config.name}!")

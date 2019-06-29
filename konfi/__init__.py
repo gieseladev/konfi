@@ -1,11 +1,12 @@
 """konfi is a config parser"""
 
-from .converter import ConverterABC, ConverterFunc, ConverterType, has_converter, register_converter
-from .field import Field, ValueFactory, field
+from . import converters
+from .converter import ConverterABC, ConverterFunc, ConverterType, convert_value, has_converter, register_converter
+from .field import Field, MISSING, ValueFactory, field
 from .loader import Loader
 from .source import SourceABC
 from .sources import *
-from .template import fields, is_template, template
+from .template import fields, get_field, is_template, is_template_like, template
 
 __version__ = "0.0.1"
 __author__ = "Giesela Inc."

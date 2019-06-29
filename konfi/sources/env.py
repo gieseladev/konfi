@@ -6,12 +6,13 @@ from typing import Any, Callable, Iterable, List, Mapping, Pattern, Type, Union
 import yaml
 
 import konfi
-from konfi import converter
+from konfi import source
 
 __all__ = ["Env",
            "Decoder", "ResolvableDecoder", "resolve_decoder",
            "NameBuilder", "build_env_name"]
 
+# TODO this doesn't match "   5test", should probably use ^\s*\d
 unportable_chars_pattern: Pattern = re.compile(r"^\d|[^a-z0-9]", re.IGNORECASE)
 
 Decoder = Callable[[str], Any]
@@ -25,6 +26,8 @@ decoders: Mapping[str, Decoder] = {
 }
 
 ResolvableDecoder = Union[str, Decoder]
+ResolvableDecoder.__doc__ = \
+    """Either the name of a built-in decoder or a `Decoder` function."""
 
 
 def resolve_decoder(decoder: ResolvableDecoder) -> Decoder:
@@ -64,6 +67,51 @@ def build_env_name(path: Iterable[str]) -> str:
 
 
 class Env(konfi.SourceABC):
+    """Source which loads the config from environment variables.
+
+    The env source is different from most sources because it walks through the
+    config template and looks for the corresponding environment variable instead
+    of the other way around. This means that with the exception of template-like
+    objects it's not possible to set sub values directly. For example, you can't
+    update a specific key of a dictionary using an environment variable using a
+    specific environment variable, only the entire value (i.e. dictionary) can
+    be set.
+
+
+    Args:
+          prefix: Prefix to prepend to all variable names.
+            This can be used to prevent name collisions and ensure
+            that the variables were set with the right intent.
+
+          decoder: Decoder used to interpret the values of the environment
+              variables. There are three built-in decoders:
+
+              - raw: Values are interpreted as strings.
+
+              - python: Values are (safely) interpreted as if they were Python
+                literals.
+
+              - yaml: Values are interpreted as YAML. This is by far the most
+                powerful and convenient decoder. For example, it doesn't require
+                the use of quotation marks to escape strings.
+
+
+              You can also pass your own decoder with the type `Decoder` which
+              is just a function that takes a string and returns the decoded
+              version.
+
+              The default is the python decoder.
+
+          name_builder: Function that combines the path segments of a field to
+            the name of the corresponding environment variable
+            (ex: ["database", "main", "url"] -> "DATABASE_MAIN_URL").
+
+            The default is the `build_env_name` function which removes
+            non-alphanumeric characters and underscores from the path segments
+            as well as stripping leading numbers. The segments are then joined
+            using underscores. For example ["a_b@", "1c_d"] would be turned
+            into "AB_CD".
+    """
     _prefix: str
     _decoder: Decoder
     _name_builder: NameBuilder
@@ -80,7 +128,7 @@ class Env(konfi.SourceABC):
         """Combine prefix and name builder result."""
         return f"{self._prefix}{self._name_builder(path)}"
 
-    def load_path(self, path: List[str], parent: Any, field: konfi.Field) -> None:
+    def _load_path(self, path: List[str], parent: Any, field: konfi.Field) -> None:
         key = self.get_env_name(path)
         try:
             raw_value = os.environ[key]
@@ -93,17 +141,8 @@ class Env(konfi.SourceABC):
             # TODO le raise
             raise
 
-        converter.load_field_value(parent, field, value)
+        source.load_field_value(parent, field, value)
 
     def load_into(self, obj: Any, template: Type) -> None:
-        self.load_child([], obj, konfi.fields(template))
-
-    def load_child(self, path: List[str], parent: Any, fields: Iterable[konfi.Field]) -> None:
-        fields_by_key = {field.key: field for field in fields}
-        for key, field in fields_by_key.items():
-            key_path = [*path, key]
-            if konfi.is_template(field.value_type):
-                # TODO write proper iterator
-                self.load_child(key_path, None, konfi.fields(field.value_type))
-            else:
-                self.load_path(key_path, parent, field)
+        for qfield in source.iter_fields_recursively(obj, template):
+            self._load_path(qfield.path, qfield.parent, qfield.field)

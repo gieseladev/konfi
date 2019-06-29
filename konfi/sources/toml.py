@@ -3,7 +3,7 @@ from typing import Any
 import toml
 
 import konfi
-from konfi.converter import load_template_value
+from konfi.source import load_fields_values
 from .file import register_file_loader
 
 __all__ = ["TOML"]
@@ -13,7 +13,7 @@ __all__ = ["TOML"]
 class TOML(konfi.SourceABC):
     _path: str
 
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, **_) -> None:
         self._path = path
 
     def load_into(self, obj: Any, template: type) -> None:
@@ -22,4 +22,5 @@ class TOML(konfi.SourceABC):
         except Exception:
             # TODO add detailllllz
             raise
-        load_template_value(obj, konfi.fields(template), data)
+
+        load_fields_values(obj, konfi.fields(template), data)
