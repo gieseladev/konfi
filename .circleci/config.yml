@@ -1,7 +1,13 @@
 version: "2.1"
 
+executors:
+  python:
+    docker:
+      - image: circleci/python:3.7
+
 jobs:
   install:
+    executor: python
     steps:
       - checkout
       - run:
@@ -12,6 +18,7 @@ jobs:
           command: pipenv install --system --dev
 
   test:
+    executor: python
     steps:
       - install
       - run:
@@ -21,6 +28,7 @@ jobs:
           path: test-reports
 
   publish:
+    executor: python
     steps:
       - install
       - run:
