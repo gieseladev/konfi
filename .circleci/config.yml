@@ -9,7 +9,7 @@ commands:
           command: pip install pipenv
       - run:
           name: Install dependencies
-          command: pipenv install --system --dev
+          command: pipenv install --system --dev --user
 
 executors:
   python:
@@ -54,6 +54,8 @@ workflows:
     jobs:
       - test:
           filters:
+            branches:
+              ignore: /.*/
             tags:
               only: /^v.*/
 
@@ -61,5 +63,7 @@ workflows:
           requires:
             - test
           filters:
+            branches:
+              ignore: /.*/
             tags:
               only: /^v.*/
