@@ -50,7 +50,7 @@ ConverterType.__doc__ = \
     """
 
 
-class ComplexConverterABC(ConverterABC, abc.ABC):
+class ComplexConverterABC(ConverterABC[Any], abc.ABC):
     """
 
     Notes:
@@ -59,7 +59,7 @@ class ComplexConverterABC(ConverterABC, abc.ABC):
     """
 
     @abc.abstractmethod
-    def can_convert(self, target: Type[CT]) -> bool:
+    def can_convert(self, target: type) -> bool:
         ...
 
 

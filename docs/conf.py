@@ -26,12 +26,17 @@ release = '0.0.1'
 
 # -- General configuration ---------------------------------------------------
 
+nitpicky = True
+
+default_role = 'obj'
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
+    'sphinx_autodoc_typehints',
     'sphinx.ext.intersphinx',
 ]
 
@@ -57,6 +62,11 @@ html_static_path = ['_static']
 
 # autodoc
 
+autodoc_member_order = 'bysource'
+
+# autodoc typehints
+
+set_type_checking_flag = True
 
 # intersphinx
 

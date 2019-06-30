@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Type, TypeVar
+from typing import Any, Callable, Optional, TYPE_CHECKING, Type, TypeVar
 
 from . import typeinspect
 from .converter import ConverterType
@@ -13,15 +13,22 @@ ValueFactory = Callable[[], Any]
 ValueFactory.__doc__ = \
     """Callable which when called, returns a value."""
 
-MISSING = object()
+# only use "expensive" sentinel for documentation
+if TYPE_CHECKING:
+    class MISSING:
+        """Sentinel representing a missing value.
+
+        This is used to represent the lack of a default value, because
+        `None` would lead to a conflict.
+        """
+
+        def __repr__(self) -> str:
+            return "MISSING"
 
 
-# MISSING.__doc__ = \
-#     """Sentinel representing a missing value.
-#
-#     This is used to represent the lack of a default value, because
-#     `None` would lead to a conflict.
-#     """
+    MISSING = MISSING()
+else:
+    MISSING = object()
 
 
 class NoDefaultValue(Exception):
@@ -124,7 +131,7 @@ class Field(UnboundField):
 
     @property
     def optional_type(self) -> bool:
-        """Whether the value type is optional (ex: Optional[str]."""
+        """Whether the value type is optional (ex: Optional[str])."""
         return typeinspect.is_optional(self.value_type)
 
     @property

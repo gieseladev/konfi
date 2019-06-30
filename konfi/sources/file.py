@@ -83,6 +83,8 @@ class FileLoader(konfi.SourceABC):
         ignore_no_loader: If set to `True` and no loader could be found for
             the given path, the source turns into a dummy source and doesn't
             load anything.
+        ignore_not_found: If set to `True` and the wrapped source raises
+            a `FileNotFoundError`, it is ignored.
         **kwargs: Keyword arguments to pass to the file loader constructor.
 
     Raises:
