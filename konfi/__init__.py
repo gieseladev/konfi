@@ -1,7 +1,9 @@
-"""konfi is a config parser"""
+"""konfi is a config parser."""
 
+# load built-in converters
 from . import converters
-from .converter import ConverterABC, ConverterFunc, ConverterType, convert_value, has_converter, register_converter
+from .converter import ConversionError, ConverterABC, ConverterFunc, \
+    ConverterType, convert_value, has_converter, register_converter
 from .field import Field, MISSING, ValueFactory, field
 from .loader import Loader
 from .source import SourceABC

@@ -10,22 +10,29 @@ TT = TypeVar("TT")
 
 
 class Loader:
+    """Loads the config from sources."""
     _sources: List[SourceABC]
 
     def __init__(self) -> None:
         self._sources = []
 
     def set_sources(self, *sources: SourceABC) -> None:
+        """Set the sources to use when loading."""
         self._sources = list(sources)
 
     def load(self, template: Union[Type[TT], TT]) -> TT:
+        """Load the config for the given template.
+
+        Raises:
+            ValueError: If no sources are set.
+            TypeError: If the given template isn't template-like.
+        """
+
         if not self._sources:
-            # TODO raise something?
-            raise Exception
+            raise ValueError("No sources are set")
 
         if not is_template_like(template):
-            # TODO raise something else
-            raise Exception
+            raise TypeError(f"Template must be template-like, not {template!r}")
 
         if inspect.isclass(template):
             obj = object.__new__(template)

@@ -1,31 +1,52 @@
+"""Built-in converters."""
+
 import enum
-from typing import Any, Iterable, List, Optional, TypeVar, cast
+from typing import Any, Iterable, List, TypeVar, cast
 
 from .converter import ComplexConverterABC, convert_value, register_converter
 
 T = TypeVar("T")
 
-for const_converter in {str, int, float}:
+# add built-in primitive values
+for const_converter in {
+    bool,
+    int, float, complex,
+    str, bytes,
+}:
     register_converter(const_converter)(const_converter)
 
 
-@register_converter(None)
+# <-- simple converters ------------------------------------------------------->
+
+@register_converter(None, type(None))
 def none_converter(_: Any) -> None:
+    """Converts all values to `None`."""
     return None
 
 
 @register_converter(Iterable)
 def iterable_converter(value: Any) -> Iterable:
+    """Converts the value to an iterable.
+
+    Non-iterable values are wrapped in a tuple.
+
+    Even though strings are iterable, this converter does not treat them as such
+    to be consistent with the user's expectations.
+    """
     if isinstance(value, Iterable) and not isinstance(value, (str,)):
         return value
     else:
-        return [value]
+        # yes it looks weird, but this is a tuple
+        return value,
 
 
 @register_converter(List, list)
 def list_converter(value: Any) -> List:
+    """Converts a value to a list by first converting it to an iterable."""
     return list(convert_value(value, Iterable))
 
+
+# <-- complex converters ------------------------------------------------------>
 
 @register_converter()
 class IterableConverter(ComplexConverterABC):
@@ -48,6 +69,14 @@ class IterableConverter(ComplexConverterABC):
 
 @register_converter()
 class EnumConverter(ComplexConverterABC):
+    """Converter for converting values to `enum.Enum`.
+
+    The converter prefers a perfect name match, if that fails it tries
+    to use a perfect value match.
+    If that also fails and the value is a string, the first case-insensitive
+    match on either the name or the value of a filed is returned.
+    """
+
     def can_convert(self, target: type) -> bool:
         return issubclass(target, enum.Enum)
 
@@ -57,26 +86,22 @@ class EnumConverter(ComplexConverterABC):
         except KeyError:
             pass
 
-        first_name_match: Optional[enum.Enum] = None
-        first_value_match: Optional[enum.Enum] = None
+        try:
+            return target(value)
+        except (ValueError, TypeError):
+            pass
 
-        value_lower = value.lower() if isinstance(value, str) else value
+        if isinstance(value, str):
+            value_lower = value.lower()
+            for enum_field in target:
+                enum_field = cast(enum.Enum, enum_field)
 
-        for enum_field in target:
-            enum_field = cast(enum.Enum, enum_field)
+                if value_lower == enum_field.name.lower():
+                    return enum_field
 
-            if first_name_match is None and value_lower == enum_field.name.lower():
-                first_name_match = enum_field
-                break
-
-            if first_value_match is None and value == enum_field.value:
-                first_value_match = enum_field
-
-        if first_name_match is not None:
-            return first_name_match
-
-        if first_value_match is not None:
-            return first_value_match
+                field_val = enum_field.value
+                if isinstance(field_val, str) and field_val.lower() == value_lower:
+                    return enum_field
 
         # TODO I dunno what to raise
         raise Exception

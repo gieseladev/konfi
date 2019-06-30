@@ -3,26 +3,52 @@ from typing import Any, Callable, Optional, Type, TypeVar
 from . import typeinspect
 from .converter import ConverterType
 
-__all__ = ["ValueFactory", "MISSING", "UnboundField", "Field", "upgrade_unbound", "field"]
+__all__ = ["ValueFactory", "MISSING",
+           "NoDefaultValue",
+           "UnboundField", "Field",
+           "upgrade_unbound", "field"]
 
 FT = TypeVar("FT")
 ValueFactory = Callable[[], Any]
+ValueFactory.__doc__ = \
+    """Callable which when called, returns a value."""
 
 MISSING = object()
 
 
+# MISSING.__doc__ = \
+#     """Sentinel representing a missing value.
+#
+#     This is used to represent the lack of a default value, because
+#     `None` would lead to a conflict.
+#     """
+
+
 class NoDefaultValue(Exception):
+    """Exception for when a default value is expected, but doesn't exist."""
     ...
 
 
 class UnboundField:
+    """A field that hasn't been bound to a template.
+
+    Attributes:
+        key (Optional[str]): Corresponding config key to use.
+        comment (Optional[str]): Comment for the field.
+        default_value (Any): The default value of the field.
+            The value `MISSING` is used if no default value exists.
+        default_factory (Optional[ValueFactory]): Factory to call to
+            get the default value.
+        converter (Optional[ConverterType]): Converter to use.
+
+    """
     key: Optional[str]
     comment: Optional[str]
 
     default_value: Any
     default_factory: Optional[ValueFactory]
 
-    converter: ConverterType
+    converter: Optional[ConverterType]
 
     # TODO ability to specify converter manually
 
@@ -46,9 +72,17 @@ class UnboundField:
 
     @property
     def required(self) -> bool:
+        """Checks whether the field must be set."""
         return self.default_value is MISSING and self.default_factory is None
 
     def get_default(self) -> Any:
+        """Get the default value of the field.
+
+        This uses either the default value or calls the default factory.
+
+        Raises:
+            NoDefaultValue: If the field doesn't have a default value.
+        """
         if self.default_value is not MISSING:
             return self.default_value
         elif self.default_factory is not None:
@@ -58,6 +92,13 @@ class UnboundField:
 
 
 class Field(UnboundField):
+    """A field of a template.
+
+    Attributes:
+        attribute (str): Name of the attribute the field belongs to.
+        key (str): Name of the config key.
+        value_type (Type): Expected type of the field.
+    """
     attribute: str
     key: str
 
@@ -83,6 +124,7 @@ class Field(UnboundField):
 
     @property
     def optional_type(self) -> bool:
+        """Whether the value type is optional (ex: Optional[str]."""
         return typeinspect.is_optional(self.value_type)
 
     @property
@@ -100,6 +142,16 @@ class Field(UnboundField):
 
 
 def upgrade_unbound(unbound: UnboundField, *, attribute: str, value_type: Type) -> Field:
+    """Upgrade an unbound field to a field.
+
+    Args:
+        unbound: Unbound field to upgrade.
+        attribute: Attribute name of the field.
+        value_type: Value type of the field.
+
+    Returns:
+        A field with the values of the unbound field.
+    """
     return Field(
         attribute=attribute,
         key=unbound.key,
@@ -115,6 +167,19 @@ def field(*, key: str = None, comment: str = None,
           default: Any = MISSING, factory: ValueFactory = None,
           converter: ConverterType = None,
           ) -> UnboundField:
+    """Create a field.
+
+    Args:
+        key: Config key to use (instead of the attribute name).
+        comment: Comment for the field.
+        default: Default value for the field.
+        factory: Factory method to use to get the default value.
+            You can't set both the default and the factory value.
+        converter: Custom converter to use.
+
+    Returns:
+        An unbound field.
+    """
     return UnboundField(
         key=key,
         comment=comment,

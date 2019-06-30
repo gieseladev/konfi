@@ -9,6 +9,7 @@ pyyaml = "*"
 
 [dev-packages]
 pytest = "*"
+sphinx = "*"
 
 [requires]
 python_version = "3.7"

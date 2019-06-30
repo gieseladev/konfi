@@ -7,7 +7,8 @@ from .converter import has_converter
 from .field import Field, MISSING, NoDefaultValue, UnboundField, upgrade_unbound
 
 __all__ = ["template", "is_template", "is_template_like",
-           "fields", "get_field"]
+           "fields", "get_field",
+           "ensure_complete"]
 
 _FIELDS_ATTR = "__template_fields__"
 
@@ -51,6 +52,8 @@ def _make_template(cls: type):
 
 
 def template():
+    """Decorator to convert the given class to a template."""
+
     def decorator(cls: type):
         if not inspect.isclass(cls):
             raise ValueError("decorator must be applied to a class")
@@ -62,10 +65,15 @@ def template():
 
 
 def is_template(obj: Any) -> bool:
+    """Check whether the given object is a template instance or class."""
     return hasattr(obj, _FIELDS_ATTR)
 
 
 def is_template_like(obj: Any) -> bool:
+    """Check whether the given object is template-like.
+
+    Currently this includes templates and dataclasses.
+    """
     return is_template(obj) or dataclasses.is_dataclass(obj)
 
 
@@ -100,14 +108,36 @@ def _get_fields(obj: Any) -> Dict[str, Field]:
 
 
 def fields(obj: Any) -> Tuple[Field, ...]:
+    """Get the fields of a template-like instance or class.
+
+    Raises:
+        TypeError: If the given object isn't template-like.
+
+    Returns:
+        A tuple containing all fields of the template.
+    """
     return tuple(_get_fields(obj).values())
 
 
 def get_field(obj: Any, attr: str) -> Optional[Field]:
+    """Get the field for an attribute from a template-like  instance or class.
+
+    Raises:
+        TypeError: If the given object isn't template-like.
+
+    Returns:
+        The field for the attribute or `None` if no such field exists.
+    """
     return _get_fields(obj).get(attr)
 
 
 def ensure_complete(obj: Any, templ: type) -> None:
+    """Check whether the given object contains all fields of the template.
+
+    Sub-templates are checked recursively. If a field doesn't have a value but
+    the field has a default value, the default value is assigned.
+    No type checking is performed.
+    """
     for f in fields(templ):
         try:
             val = getattr(obj, f.attribute)

@@ -1,7 +1,12 @@
+"""Runtime introspection for typings."""
+
 import inspect
 from typing import Any, Generic, Optional, Tuple, Type, TypeVar, Union, _GenericAlias
 
 TypeTuple = Tuple[type, ...]
+TypeTuple.__doc__ = \
+    """Variadic tuple containing types."""
+
 NoneType = type(None)
 
 
