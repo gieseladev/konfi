@@ -58,6 +58,7 @@ workflows:
       - publish:
           requires:
             - test
+          context: PyPI
           filters:
             branches:
               ignore: /.*/
