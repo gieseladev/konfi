@@ -175,7 +175,10 @@ def _call_converter(conv: ConverterType, value: Any, target: Type) -> Any:
 
     try:
         return converter_func()
+    except ConversionError as e:
+        raise e
     except Exception as e:
+        # TODO use some sort of "friendly_name" function to get {target}
         raise ConversionError(f"Couldn't convert {value!r} to {target} using {conv}") from e
 
 

@@ -1,9 +1,11 @@
 """Built-in converters."""
 
 import enum
+import inspect
 from typing import Any, Iterable, List, TypeVar, cast
 
-from .converter import ComplexConverterABC, convert_value, register_converter
+from . import typeinspect
+from .converter import ComplexConverterABC, ConversionError, convert_value, register_converter
 
 T = TypeVar("T")
 
@@ -68,6 +70,26 @@ class IterableConverter(ComplexConverterABC):
 
 
 @register_converter()
+class TupleConverter(ComplexConverterABC):
+    """Converter for typed tuples."""
+
+    def can_convert(self, target: type) -> bool:
+        return typeinspect.is_tuple(target)
+
+    def convert(self, value: Any, target: type) -> tuple:
+        values = convert_value(value, list)
+
+        types, n = typeinspect.resolve_tuple(target)
+        if n is None:
+            typ = types[0]
+            return tuple(convert_value(val, typ) for val in values)
+        elif n != len(values):
+            raise ConversionError(f"Can't convert {values!r} to {n}-tuple, lengths don't match")
+        else:
+            return tuple(convert_value(val, typ) for val, typ in zip(values, types))
+
+
+@register_converter()
 class EnumConverter(ComplexConverterABC):
     """Converter for converting values to `enum.Enum`.
 
@@ -78,7 +100,7 @@ class EnumConverter(ComplexConverterABC):
     """
 
     def can_convert(self, target: type) -> bool:
-        return issubclass(target, enum.Enum)
+        return inspect.isclass(target) and issubclass(target, enum.Enum)
 
     def convert(self, value: Any, target: enum.EnumMeta) -> enum.Enum:
         try:

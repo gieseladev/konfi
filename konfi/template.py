@@ -19,10 +19,6 @@ def _make_fields(cls: type) -> Dict[str, Field]:
     # TODO handle MRO properly
     cls_annotations = get_type_hints(cls)
     for attr, typ in cls_annotations.items():
-        if not (is_template_like(typ) or has_converter(typ)):
-            # TODO raise
-            raise Exception
-
         try:
             value = getattr(cls, attr)
         except AttributeError:
@@ -40,6 +36,12 @@ def _make_fields(cls: type) -> Dict[str, Field]:
 
         else:
             field = Field(attribute=attr, value_type=typ, default_value=value)
+
+        if not (field.converter is not None
+                or is_template_like(typ)
+                or has_converter(typ)):
+            # TODO raise
+            raise Exception
 
         cls_fields[attr] = field
 

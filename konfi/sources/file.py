@@ -90,9 +90,14 @@ class FileLoader(konfi.SourceABC):
             `ignore_no_loader` is `False`.
     """
     _loader: Optional[konfi.SourceABC]
+
+    _ignore_not_found: bool
     _kwargs: Dict[str, Any]
 
-    def __init__(self, path: str, *, ignore_no_loader: bool = False, **kwargs: Any) -> None:
+    def __init__(self, path: str, *,
+                 ignore_no_loader: bool = False,
+                 ignore_not_found: bool = False,
+                 **kwargs: Any) -> None:
         suffix = pathlib.Path(path).suffix.lower()
         try:
             loader_cls = _FILE_LOADERS[suffix]
@@ -106,8 +111,16 @@ class FileLoader(konfi.SourceABC):
 
         self._loader = loader
 
+        self._ignore_not_found = ignore_not_found
+
     def load_into(self, obj: Any, template: type) -> None:
         if self._loader is None:
             return
 
-        self._loader.load_into(obj, template)
+        try:
+            self._loader.load_into(obj, template)
+        except FileNotFoundError as e:
+            if self._ignore_not_found:
+                return
+            else:
+                raise e
