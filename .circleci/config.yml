@@ -9,7 +9,7 @@ commands:
           command: pip install pipenv
       - run:
           name: Install dependencies
-          command: pipenv install --system --dev --user
+          command: pipenv install --dev
 
 executors:
   python:
@@ -33,16 +33,12 @@ jobs:
       - install
       - run:
           name: Build Distribution
-          command: |
-            pip install setuptools wheel
-            python setup.py sdist bdist_wheel
+          command: pipenv run python setup.py sdist bdist_wheel
       - store_artifacts:
           path: dist
       - run:
           name: Upload Distribution
-          command: |
-            pip install twine
-            twine upload --user $PYPI_USER --password $PYPI_PASSWORD dist/*
+          command: pipenv run twine upload --user $PYPI_USER --password $PYPI_PASSWORD dist/*
 
 
 workflows:
