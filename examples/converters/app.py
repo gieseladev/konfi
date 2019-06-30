@@ -24,6 +24,10 @@ class Config:
 
 if __name__ == "__main__":
     konfi.set_sources(
+        # file loader is a higher-order source which determines what
+        # kind of file it's dealing with by looking at the file extension.
+        # It then delegates the actual work to another source. (in this case
+        # konfi.TOML)
         konfi.FileLoader("config.toml", ignore_not_found=True),
     )
 
