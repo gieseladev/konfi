@@ -20,7 +20,7 @@ setuptools.setup(
 
     entry_points={
         "console_scripts": [
-            "konfi=konfi:cli:main",
+            "konfi=konfi.cli:main",
         ]
     }
 )

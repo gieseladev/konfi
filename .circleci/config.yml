@@ -1,0 +1,57 @@
+version: "2.1"
+
+jobs:
+  install:
+    steps:
+      - checkout
+      - run:
+          name: Install pipenv
+          command: pip install pipenv
+      - run:
+          name: Install dependencies
+          command: pipenv install --system --dev
+
+  test:
+    steps:
+      - install
+      - run:
+          name: Run tests
+          command: pipenv run tests --junitxml=test-reports/junit.xml
+      - store_test_results:
+          path: test-reports
+
+  publish:
+    steps:
+      - install
+      - run:
+          name: Build Distribution
+          command: |
+            pip install setuptools wheel
+            python setup.py sdist bdist_wheel
+      - store_artifacts:
+          path: dist
+      - run:
+          name: Upload Distribution
+          command: |
+            pip install twine
+            twine upload --user $PYPI_USER --password $PYPI_PASSWORD dist/*
+
+
+workflows:
+  commit:
+    jobs:
+      - test
+
+  tag:
+    jobs:
+      - test:
+          filters:
+            tag:
+              only: /^v.*/
+
+      - publish:
+          requires:
+            - test
+          filters:
+            tag:
+              only: /^v.*/
