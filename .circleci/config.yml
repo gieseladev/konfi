@@ -1,13 +1,7 @@
 version: "2.1"
 
-executors:
-  python:
-    docker:
-      - image: circleci/python:3.7
-
-jobs:
+commands:
   install:
-    executor: python
     steps:
       - checkout
       - run:
@@ -17,6 +11,12 @@ jobs:
           name: Install dependencies
           command: pipenv install --system --dev
 
+executors:
+  python:
+    docker:
+      - image: circleci/python:3.7
+
+jobs:
   test:
     executor: python
     steps:
