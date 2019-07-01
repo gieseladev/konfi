@@ -1,9 +1,7 @@
 import ast
 import os
 import re
-from typing import Any, Callable, Iterable, List, Mapping, Pattern, Type, Union
-
-import yaml
+from typing import Any, Callable, Dict, Iterable, List, Pattern, Type, Union
 
 import konfi
 from konfi import source
@@ -19,11 +17,20 @@ Decoder = Callable[[str], Any]
 Decoder.__doc__ = \
     """Callable which decodes the value of an environment variable."""
 
-decoders: Mapping[str, Decoder] = {
+_DECODERS: Dict[str, Union[Decoder, Exception]] = {
     "raw": str,
     "python": ast.literal_eval,
-    "yaml": yaml.safe_load,
 }
+
+try:
+    import yaml
+except ImportError as e:
+    exc = ImportError("yaml decoder unavailable because pyyaml package is missing.")
+    exc.__cause__ = e
+    _DECODERS["yaml"] = e
+    yaml = None
+else:
+    _DECODERS["yaml"] = yaml.safe_load
 
 ResolvableDecoder = Union[str, Decoder]
 ResolvableDecoder.__doc__ = \
@@ -39,15 +46,21 @@ def resolve_decoder(decoder: ResolvableDecoder) -> Decoder:
     Raises:
         KeyError: Decoder name was given, but doesn't exist
         TypeError: Invalid type was given
-
-    Returns:
-        Decoder
+        Exception: If the decoder whose name was given is unavailable.
+            For example if the `pyyaml` package isn't installed, an
+            `ImportError` will be raised when trying to resolve the
+            "yaml" decoder.
     """
     if isinstance(decoder, str):
         try:
-            return decoders[decoder.lower()]
+            dec = _DECODERS[decoder.lower()]
         except KeyError:
             raise KeyError(f"No existing decoder {decoder!r}")
+        else:
+            if isinstance(dec, Exception):
+                raise dec from None
+            else:
+                return dec
 
     if callable(decoder):
         return decoder
