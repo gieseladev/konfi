@@ -1,6 +1,7 @@
 # konfi
 
 [![CircleCI](https://circleci.com/gh/gieseladev/konfi.svg?style=svg)](https://circleci.com/gh/gieseladev/konfi)
+[![PyPI](https://img.shields.io/pypi/v/konfi.svg)](https://pypi.org/project/konfi/)
 [![Documentation Status](https://readthedocs.org/projects/konfi/badge/?version=latest)](https://konfi.giesela.dev/en/latest/?badge=latest)
 
 Cute config parser.
