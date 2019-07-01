@@ -22,5 +22,11 @@ setuptools.setup(
         "console_scripts": [
             "konfi=konfi.cli:main",
         ]
-    }
+    },
+
+    install_requires=["toml", "pyyaml"],
+
+    extras_require={
+        "docs": ["sphinx", "sphinx-autodoc-typehints"],
+    },
 )

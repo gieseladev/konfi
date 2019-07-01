@@ -1,5 +1,8 @@
 # konfi
 
+[![CircleCI](https://circleci.com/gh/gieseladev/konfi.svg?style=svg)](https://circleci.com/gh/gieseladev/konfi)
+[![Documentation Status](https://readthedocs.org/projects/konfi/badge/?version=latest)](https://konfi.readthedocs.io/en/latest/?badge=latest)
+
 Cute config parser.
 
 

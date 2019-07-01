@@ -9,10 +9,10 @@ pyyaml = "*"
 
 [dev-packages]
 pytest = "*"
-sphinx = "*"
 setuptools = "*"
 wheel = "*"
 twine = "*"
+sphinx = "*"
 sphinx-autodoc-typehints = "*"
 
 [requires]
