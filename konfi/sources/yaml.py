@@ -1,7 +1,5 @@
 from typing import Any, Type
 
-import yaml
-
 import konfi
 from konfi.source import load_fields_values
 from .file import register_file_loader
@@ -28,6 +26,8 @@ class YAML(konfi.SourceABC):
         self._ignore_not_found = ignore_not_found
 
     def load_into(self, obj: Any, template: Type) -> None:
+        import yaml
+
         try:
             with open(self._path, "r") as f:
                 data = yaml.safe_load(f)

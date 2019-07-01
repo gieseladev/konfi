@@ -1,7 +1,5 @@
 from typing import Any
 
-import toml
-
 import konfi
 from konfi.source import load_fields_values
 from .file import register_file_loader
@@ -19,6 +17,8 @@ class TOML(konfi.SourceABC):
         self._ignore_not_found = ignore_not_found
 
     def load_into(self, obj: Any, template: type) -> None:
+        import toml
+
         try:
             data = toml.load(self._path)
         except FileNotFoundError as e:
