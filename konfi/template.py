@@ -54,7 +54,12 @@ def _make_template(cls: type):
 
 
 def template():
-    """Decorator to convert the given class to a template."""
+    """Decorator to convert the given class to a template.
+
+    Raises:
+        ValueError: If the decorated object isn't a class.
+        TypeError: If one of the fields has an invalid type.
+    """
 
     def decorator(cls: type):
         if not inspect.isclass(cls):
@@ -139,6 +144,13 @@ def ensure_complete(obj: Any, templ: type) -> None:
     Sub-templates are checked recursively. If a field doesn't have a value but
     the field has a default value, the default value is assigned.
     No type checking is performed.
+
+    Raises:
+        TypeError: If the given template isn't template-like.
+        PathError: If there's an error with one of the fields.
+            `FieldError` is raised when a value is missing.
+            If there are multiple errors, a `MultiPathError` exception
+            is raised.
     """
     path_errors: List[PathError] = []
 

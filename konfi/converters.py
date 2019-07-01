@@ -2,20 +2,43 @@
 
 import enum
 import inspect
-from typing import Any, Iterable, List, TypeVar, cast
+from typing import Any, Callable, Iterable, List, Optional, Set, Tuple, TypeVar, cast
 
 from . import typeinspect
 from .converter import ComplexConverterABC, ConversionError, convert_value, register_converter
 
 T = TypeVar("T")
 
-# add built-in primitive values
-for const_converter in {
-    bool,
-    int, float, complex,
-    str, bytes,
-}:
-    register_converter(const_converter)(const_converter)
+# <-- converter groups -------------------------------------------------------->
+
+# primitive types
+for conv in (
+        bool,
+        int, float, complex,
+        str, bytes,
+):
+    register_converter(conv)(conv)
+
+del conv
+
+# iterable types
+for convs in (
+        (Tuple, tuple),
+        (List, list),
+        (Set, set),
+):
+    cls = cast(Callable, convs[-1])
+
+
+    @register_converter(*convs)
+    def converter(val: Any):
+        val = convert_value(val, Iterable)
+        if not isinstance(val, cls):
+            val = cls(val)
+
+        return val
+
+del convs
 
 
 # <-- simple converters ------------------------------------------------------->
@@ -48,31 +71,36 @@ def iterable_converter(value: Any) -> Iterable:
         return value,
 
 
-@register_converter(List, list)
-def list_converter(value: Any) -> List:
-    """Converts a value to a list by first converting it to an iterable."""
-    return list(convert_value(value, Iterable))
-
-
 # <-- complex converters ------------------------------------------------------>
 
 @register_converter()
-class IterableConverter(ComplexConverterABC):
+class UnionConverter(ComplexConverterABC):
+    """Converter for union types.
+
+    First checks if value is already in the union and if it's not it then
+    tries to convert to the values from first to last.
+    """
+
     def can_convert(self, target: type) -> bool:
-        pass
+        return typeinspect.is_union(target)
 
-    def convert(self, value: Any, target: type) -> Iterable[T]:
-        # TODO find iter type
-        iter_type = None
+    def convert(self, value: Any, target: type) -> Any:
+        if typeinspect.has_type(value, target):
+            return value
 
-        final_list = []
+        types = typeinspect.get_type_args(target)
+        last_exception: Optional[Exception] = None
 
-        it = convert_value(value, Iterable)
-        for i, sub_value in enumerate(it):
-            v = convert_value(sub_value, iter_type)
-            final_list.append(v)
+        for typ in types:
+            try:
+                return convert_value(value, typ)
+            except ConversionError as e:
+                if last_exception is not None:
+                    last_exception.__cause__ = e
 
-        return final_list
+                last_exception = e
+
+        raise last_exception
 
 
 @register_converter()
@@ -93,6 +121,35 @@ class TupleConverter(ComplexConverterABC):
             raise ConversionError(f"Can't convert {values!r} to {n}-tuple, lengths don't match")
         else:
             return tuple(convert_value(val, typ) for val, typ in zip(values, types))
+
+
+# TODO list converter
+# TODO mapping converter
+# TODO Template-like converter
+
+
+@register_converter()
+class IterableConverter(ComplexConverterABC):
+    def can_convert(self, target: type) -> bool:
+        # TODO
+        return False
+
+    def convert(self, value: Any, target: type) -> Iterable[T]:
+        iter_type = typeinspect.get_type_args(target)[0]
+
+        final_list = []
+
+        it = convert_value(value, Iterable)
+        for i, sub_value in enumerate(it):
+            try:
+                v = convert_value(sub_value, iter_type)
+            except ConversionError as e:
+                # TODO typeinspect.friendly_name
+                raise ConversionError(f"couldn't convert value at index {i} ({sub_value!r}) to {target}") from e
+
+            final_list.append(v)
+
+        return final_list
 
 
 @register_converter()

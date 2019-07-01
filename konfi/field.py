@@ -39,6 +39,9 @@ class NoDefaultValue(Exception):
 class UnboundField:
     """A field that hasn't been bound to a template.
 
+    Note that an unbound field is usually created using the `field`
+    function, not directly.
+
     Attributes:
         key (Optional[str]): Corresponding config key to use.
         comment (Optional[str]): Comment for the field.
@@ -48,6 +51,8 @@ class UnboundField:
             get the default value.
         converter (Optional[ConverterType]): Converter to use.
 
+    Raises:
+        ValueError: If both factory and default value are specified.
     """
     key: Optional[str]
     comment: Optional[str]
@@ -75,7 +80,7 @@ class UnboundField:
 
         self.converter = converter
 
-    def __repr__(self) -> None:
+    def __repr__(self) -> str:
         return f"UnboundField(key={self.key!r}, comment={self.comment!r})"
 
     @property
@@ -101,6 +106,9 @@ class UnboundField:
 
 class Field(UnboundField):
     """A field of a template.
+
+    Field is a superset of `UnboundField` meaning it inherits all attributes
+    and arguments.
 
     Attributes:
         attribute (str): Name of the attribute the field belongs to.
@@ -188,6 +196,9 @@ def field(*, key: str = None, comment: str = None,
         factory: Factory method to use to get the default value.
             You can't set both the default and the factory value.
         converter: Custom converter to use.
+
+    Raises:
+        ValueError: If both factory and default value are specified.
 
     Returns:
         An unbound field.

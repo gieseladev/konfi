@@ -17,7 +17,11 @@ class SourceABC(abc.ABC):
 
     @abc.abstractmethod
     def load_into(self, obj: Any, template: type) -> None:
-        """Load the config into the given object according to the template."""
+        """Load the config into the given object according to the template.
+
+        Raises:
+            Exception: If the config couldn't be loaded.
+        """
         ...
 
 
@@ -121,7 +125,7 @@ def load_field_value(obj: Any, field: konfi.Field, value: Any) -> None:
     """Load the given value for a field into the object.
 
     Raises:
-        ConversionError: If the value couldn't be converted to the given field
+        FieldError: If the value couldn't be converted to the given field
     """
     try:
         if field.converter is None:
@@ -157,6 +161,10 @@ def load_fields_values(obj: Any, fields: Iterable[konfi.Field], mapping: Mapping
         fields: Fields to load
         mapping: Mapping to get field values from
         ignore_unknown: If `True`, excessive keys in the mapping are ignored.
+
+    Raises:
+        PathError: If there is an issue with a field.
+            If multiple fields have an error, `MultiPathError` is raised.
     """
     _field_by_keys: Dict[str, konfi.Field] = {field.key: field for field in fields}
 

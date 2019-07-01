@@ -46,9 +46,15 @@ class Loader:
     def load(self, template: Union[Type[TT], TT]) -> TT:
         """Load the config for the given template.
 
+        Args:
+            template: Template to load from the sources.
+                If this is already an instance of the template, then
+                the config is loaded into the instance.
+
         Raises:
             ValueError: If no sources are set.
             TypeError: If the given template isn't template-like.
+            SourceError: If one of the sources fails to load the config.
         """
 
         if not self._sources:
