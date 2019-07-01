@@ -6,6 +6,8 @@ from typing import Any, Dict, Iterable, Iterator, List, Mapping
 import konfi
 
 __all__ = ["SourceABC",
+           "PathError", "MultiPathError",
+           "FieldError",
            "QualifiedField", "iter_fields_recursively",
            "load_field_value", "load_fields_values"]
 
@@ -17,6 +19,74 @@ class SourceABC(abc.ABC):
     def load_into(self, obj: Any, template: type) -> None:
         """Load the config into the given object according to the template."""
         ...
+
+
+class PathError(Exception):
+    """General exception in a template path.
+
+    Attributes:
+        path (List[str]): Path to the origin of the exception.
+    """
+    path: List[str]
+
+    def __init__(self, path: Iterable[str], msg: str) -> None:
+        super().__init__(msg)
+        self.path = list(path)
+
+    def __str__(self) -> str:
+        path_str = self.path_str
+        if path_str:
+            path_str = f"{path_str}: "
+
+        return f"{path_str}{super().__str__()}"
+
+    @property
+    def path_str(self) -> str:
+        """Get the path as a string."""
+        return " -> ".join(f"{path!r}" for path in self.path)
+
+    def backtrace_path(self, part: str) -> None:
+        """Add a part to the path."""
+        self.path.insert(0, part)
+
+
+class MultiPathError(PathError):
+    """Exception grouping multiple `PathError` instances.
+
+    Attributes:
+        errors (List[PathError]): Grouped path errors.
+    """
+    errors: List[PathError]
+
+    def __init__(self, path: Iterable[str], errors: Iterable[PathError], msg: str) -> None:
+        super().__init__(path, msg)
+        self.errors = list(errors)
+
+    def __iter__(self) -> Iterable[PathError]:
+        return iter(self.errors)
+
+    def __str__(self) -> str:
+        import textwrap
+
+        path_str = self.path_str
+        if path_str:
+            path_str = f"{path_str}: "
+
+        errors_str = textwrap.indent("\n".join(map(str, self.errors)), "  ")
+        return f"{path_str}{super().__str__()}:\n{errors_str}"
+
+
+class FieldError(PathError):
+    """Exception for a particular field.
+
+    Attributes:
+        field (konfi.Field): Field which caused the exception.
+    """
+    field: konfi.Field
+
+    def __init__(self, path: Iterable[str], field: konfi.Field, msg: str) -> None:
+        super().__init__(path, msg)
+        self.field = field
 
 
 @dataclasses.dataclass()
@@ -53,12 +123,15 @@ def load_field_value(obj: Any, field: konfi.Field, value: Any) -> None:
     Raises:
         ConversionError: If the value couldn't be converted to the given field
     """
-    # TODO maybe wrap in some config error?
-    if field.converter is None:
-        converted = konfi.convert_value(value, field.value_type)
-    else:
-        # TODO clean
-        converted = konfi.converter._call_converter(field.converter, value, field.value_type)
+    try:
+        if field.converter is None:
+            converted = konfi.convert_value(value, field.value_type)
+        else:
+            # TODO clean
+            converted = konfi.converter._call_converter(field.converter, value, field.value_type)
+    except konfi.ConversionError as e:
+        # TODO typeinspect.friendly_name
+        raise FieldError([field.key], field, str(e)) from e
 
     setattr(obj, field.attribute, converted)
 
@@ -87,6 +160,8 @@ def load_fields_values(obj: Any, fields: Iterable[konfi.Field], mapping: Mapping
     """
     _field_by_keys: Dict[str, konfi.Field] = {field.key: field for field in fields}
 
+    field_errors: List[PathError] = []
+
     for key, value in mapping.items():
         try:
             field = _field_by_keys[key]
@@ -94,8 +169,8 @@ def load_fields_values(obj: Any, fields: Iterable[konfi.Field], mapping: Mapping
             if ignore_unknown:
                 continue
             else:
-                # TODO raise something
-                raise Exception
+                # TODO raise something else
+                raise NotImplementedError(f"unknown config key: {key!r}")
 
         if konfi.is_template_like(field.value_type) and isinstance(value, Mapping):
             sub_obj = _get_sub_obj(obj, field)
@@ -105,6 +180,14 @@ def load_fields_values(obj: Any, fields: Iterable[konfi.Field], mapping: Mapping
 
         try:
             loader()
-        except Exception:
-            # TODO add more detail
-            raise
+        except PathError as e:
+            field_errors.append(e)
+        except Exception as e:
+            err = FieldError([key], field, str(e))
+            err.__cause__ = e
+            field_errors.append(err)
+
+    if len(field_errors) == 1:
+        raise field_errors[0]
+    elif field_errors:
+        raise MultiPathError((), field_errors, "")

@@ -4,9 +4,32 @@ from typing import List, Type, TypeVar, Union
 from .source import SourceABC
 from .template import ensure_complete, is_template_like
 
-__all__ = ["Loader"]
+__all__ = ["SourceError", "Loader"]
 
 TT = TypeVar("TT")
+
+
+class SourceError(Exception):
+    """Exception raised when a source fails to load the config.
+
+    Attributes:
+        source (SourceABC): Source that tried to load the config.
+        template (type): Template that was to be loaded.
+        error (Exception): Original error that was raised.
+            This is provided for convenience.
+    """
+    source: SourceABC
+    template: type
+
+    error: Exception
+
+    def __init__(self, source: SourceABC, template: type, error: Exception) -> None:
+        self.source = source
+        self.template = template
+        self.error = error
+
+    def __str__(self) -> str:
+        return f"couldn't load {self.template.__qualname__!r} from {self.source}"
 
 
 class Loader:
@@ -43,9 +66,8 @@ class Loader:
         for source in self._sources:
             try:
                 source.load_into(obj, template)
-            except Exception:
-                # TODO add more details to exception
-                raise
+            except Exception as e:
+                raise SourceError(source, template, e) from e
 
         ensure_complete(obj, template)
 

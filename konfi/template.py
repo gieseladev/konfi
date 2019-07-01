@@ -1,10 +1,11 @@
 import dataclasses
 import functools
 import inspect
-from typing import Any, Dict, Optional, Tuple, get_type_hints
+from typing import Any, Dict, List, Optional, Tuple, get_type_hints
 
 from .converter import has_converter
 from .field import Field, MISSING, NoDefaultValue, UnboundField, upgrade_unbound
+from .source import FieldError, MultiPathError, PathError
 
 __all__ = ["template", "is_template", "is_template_like",
            "fields", "get_field",
@@ -40,8 +41,7 @@ def _make_fields(cls: type) -> Dict[str, Field]:
         if not (field.converter is not None
                 or is_template_like(typ)
                 or has_converter(typ)):
-            # TODO raise
-            raise Exception
+            raise TypeError(f"Field {attr!r} doesn't have a converter.")
 
         cls_fields[attr] = field
 
@@ -140,6 +140,8 @@ def ensure_complete(obj: Any, templ: type) -> None:
     the field has a default value, the default value is assigned.
     No type checking is performed.
     """
+    path_errors: List[PathError] = []
+
     for f in fields(templ):
         try:
             val = getattr(obj, f.attribute)
@@ -147,15 +149,21 @@ def ensure_complete(obj: Any, templ: type) -> None:
             try:
                 default_val = f.get_default()
             except NoDefaultValue:
-                # TODO raise something
-                raise
+                e = FieldError([f.key], f, "required value missing")
+                path_errors.append(e)
+            else:
+                setattr(obj, f.attribute, default_val)
 
-            setattr(obj, f.attribute, default_val)
             continue
 
         if is_template_like(f.value_type):
             try:
                 ensure_complete(val, f.value_type)
-            except Exception:
-                # TODO add details
-                raise
+            except PathError as e:
+                e.backtrace_path(f.key)
+                path_errors.append(e)
+
+    if len(path_errors) == 1:
+        raise path_errors[0]
+    elif path_errors:
+        raise MultiPathError([], path_errors, f"{templ.__qualname__!r} is incomplete")

@@ -57,8 +57,6 @@ class UnboundField:
 
     converter: Optional[ConverterType]
 
-    # TODO ability to specify converter manually
-
     def __init__(self, *,
                  key: str = None,
                  comment: str = None,
@@ -76,6 +74,9 @@ class UnboundField:
         self.default_factory = default_factory
 
         self.converter = converter
+
+    def __repr__(self) -> None:
+        return f"UnboundField(key={self.key!r}, comment={self.comment!r})"
 
     @property
     def required(self) -> bool:
@@ -128,6 +129,10 @@ class Field(UnboundField):
                          converter=converter)
         self.attribute = attribute
         self.value_type = value_type
+
+    def __str__(self) -> str:
+        key_str = f" [{self.key!r}]" if self.key != self.attribute else ""
+        return f"Field({self.attribute}{key_str})"
 
     @property
     def optional_type(self) -> bool:

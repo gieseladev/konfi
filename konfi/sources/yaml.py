@@ -25,6 +25,9 @@ class YAML(konfi.SourceABC):
         self._path = path
         self._ignore_not_found = ignore_not_found
 
+    def __str__(self) -> str:
+        return f"YAML: {self._path!r}"
+
     def load_into(self, obj: Any, template: Type) -> None:
         import yaml
 

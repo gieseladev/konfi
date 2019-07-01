@@ -26,6 +26,12 @@ def none_converter(_: Any) -> None:
     return None
 
 
+@register_converter(Any)
+def any_convert(val: Any) -> Any:
+    """Returns value as is."""
+    return val
+
+
 @register_converter(Iterable)
 def iterable_converter(value: Any) -> Iterable:
     """Converts the value to an iterable.
@@ -125,5 +131,4 @@ class EnumConverter(ComplexConverterABC):
                 if isinstance(field_val, str) and field_val.lower() == value_lower:
                     return enum_field
 
-        # TODO I dunno what to raise
-        raise Exception
+        raise ConversionError(f"{value!r} isn't in enum {target.__qualname__!r}")

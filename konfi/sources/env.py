@@ -10,8 +10,7 @@ __all__ = ["Env",
            "Decoder", "ResolvableDecoder", "resolve_decoder",
            "NameBuilder", "build_env_name"]
 
-# TODO this doesn't match "   5test", should probably use ^\s*\d
-unportable_chars_pattern: Pattern = re.compile(r"^\d|[^a-z0-9]", re.IGNORECASE)
+unportable_chars_pattern: Pattern = re.compile(r"^\s*\d+|[^a-z0-9]+", re.IGNORECASE)
 
 Decoder = Callable[[str], Any]
 Decoder.__doc__ = \
@@ -28,7 +27,6 @@ except ImportError as e:
     exc = ImportError("yaml decoder unavailable because pyyaml package is missing.")
     exc.__cause__ = e
     _DECODERS["yaml"] = e
-    yaml = None
 else:
     _DECODERS["yaml"] = yaml.safe_load
 
@@ -137,6 +135,9 @@ class Env(konfi.SourceABC):
         self._decoder = resolve_decoder(decoder)
         self._name_builder = name_builder
 
+    def __str__(self) -> str:
+        return f"Environment ({self._prefix!r})"
+
     def get_env_name(self, path: List[str]) -> str:
         """Combine prefix and name builder result."""
         return f"{self._prefix}{self._name_builder(path)}"
@@ -150,9 +151,8 @@ class Env(konfi.SourceABC):
 
         try:
             value = self._decoder(raw_value)
-        except Exception:
-            # TODO le raise
-            raise
+        except Exception as e:
+            raise konfi.PathError(path, f"can't decode {raw_value!r}") from e
 
         source.load_field_value(parent, field, value)
 

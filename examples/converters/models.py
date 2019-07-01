@@ -25,7 +25,7 @@ class Temperature:
         self.kelvin = kelvin
 
     def __str__(self) -> str:
-        return f"{self.degrees:.2} °C"
+        return f"{self.degrees:.1f} °C"
 
     @property
     def kelvin(self) -> float:
@@ -60,19 +60,22 @@ class Temperature:
 
         if isinstance(value, str):
             # mad regex
-            match = re.match(r"(\d+[.\d]*)\s?(°c|°f|k)", value, re.IGNORECASE)
+            match = re.match(r"(\d+[.\d]*)\s?(°?c|°?f|k)", value, re.IGNORECASE)
             if match is None:
                 raise ValueError(f"Invalid temperature: {value!r}")
             temp_str, symbol = match.groups()
             temp = float(temp_str)
+            symbol = symbol.lstrip("°").lower()
 
             # poor man's switch
             if symbol == "k":
                 inst.kelvin = temp
             elif symbol == "c":
                 inst.degrees = temp
-            else:
+            elif symbol == "f":
                 inst.stupid = temp
+            else:
+                raise ValueError(f"unknown unit: {symbol!r}")
 
         elif isinstance(value, (float, int)):
             # yes, unitless numbers are de facto celsius, fight me

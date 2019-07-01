@@ -16,6 +16,9 @@ class TOML(konfi.SourceABC):
         self._path = path
         self._ignore_not_found = ignore_not_found
 
+    def __str__(self) -> str:
+        return f"TOML: {self._path!r}"
+
     def load_into(self, obj: Any, template: type) -> None:
         import toml
 
@@ -26,8 +29,5 @@ class TOML(konfi.SourceABC):
                 return
             else:
                 raise e
-        except Exception:
-            # TODO add detailllllz
-            raise
 
         load_fields_values(obj, konfi.fields(template), data)

@@ -115,6 +115,10 @@ class FileLoader(konfi.SourceABC):
 
         self._ignore_not_found = ignore_not_found
 
+    def __str__(self) -> str:
+        loader = self._loader or "no loader"
+        return f"FileLoader ({loader})"
+
     def load_into(self, obj: Any, template: type) -> None:
         if self._loader is None:
             return

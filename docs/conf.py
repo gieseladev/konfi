@@ -17,12 +17,20 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
+import konfi
+
 project = 'konfi'
 copyright = '2019, Giesela Inc.'
-author = 'Giesela Inc.'
+author = konfi.__author__
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = konfi.__version__
+
+# hack to unimport module
+
+for name in tuple(sys.modules):
+    if name.startswith("konfi"):
+        del sys.modules[name]
 
 # -- General configuration ---------------------------------------------------
 

@@ -88,6 +88,22 @@ Converter
 Exceptions
 ----------
 
+.. autoexception:: SourceError
+    :show-inheritance:
+    :members:
+
+.. autoexception:: PathError
+    :show-inheritance:
+    :members:
+
+.. autoexception:: FieldError
+    :show-inheritance:
+    :members:
+
+.. autoexception:: MultiPathError
+    :show-inheritance:
+    :members:
+
 .. autoexception:: NoDefaultValue
     :show-inheritance:
     :members:
