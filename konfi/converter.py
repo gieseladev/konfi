@@ -2,7 +2,7 @@ import abc
 import functools
 import inspect
 import logging
-from typing import Any, Callable, Generic, Iterable, List, MutableMapping, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Generic, Iterable, List, MutableMapping, Optional, Type, TypeVar, Union, overload
 
 from . import typeinspect
 
@@ -109,11 +109,13 @@ def register_converter(*types: Type):
         if is_complex_converter(target):
             if inspect.isclass(target):
                 try:
-                    target = target()
+                    target_inst = target()
                 except Exception as e:
                     raise ValueError(f"Couldn't create instance of complex converter {target!r}") from e
+            else:
+                target_inst = target
 
-            _COMPLEX_CONVERTERS.append(target)
+            _COMPLEX_CONVERTERS.append(target_inst)
         else:
             if not types:
                 raise ValueError("at least one target type must be provided for non-complex converters")
@@ -182,7 +184,18 @@ def _call_converter(conv: ConverterType, value: Any, target: Type) -> Any:
         raise ConversionError(f"Couldn't convert {value!r} to {target} using {conv}") from e
 
 
-def convert_value(value: Any, target: Type) -> Any:
+T = TypeVar("T")
+
+
+@overload
+def convert_value(value: Any, target: Type[T]) -> T: ...
+
+
+@overload
+def convert_value(value: Any, target: type) -> Any: ...
+
+
+def convert_value(value: Any, target: Type[T]) -> T:
     """Convert the value to the given type.
 
     If no converter was found but the target type is a class,
@@ -195,6 +208,8 @@ def convert_value(value: Any, target: Type) -> Any:
         ConversionError: If the conversion failed.
     """
     converters = get_converters(target)
+
+    # TODO let's raise the first exception instead
 
     last_exception: Optional[Exception] = None
     for c in converters:

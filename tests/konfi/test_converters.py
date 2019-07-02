@@ -1,10 +1,10 @@
 import enum
-from typing import Any, Tuple, Union
+from typing import Any, Dict, Iterable, Mapping, Set, Tuple, Union
 
 import pytest
 
 import konfi
-from konfi import converter
+from konfi import converter, converters
 
 
 def test_union_converter():
@@ -17,6 +17,12 @@ def test_tuple_converter():
     assert konfi.convert_value([1, 2], Tuple[int, int]) == (1, 2)
     assert konfi.convert_value([1, "str"], Tuple[Union[int, str], ...]) == (1, "str")
     assert konfi.convert_value([1, "str"], Tuple[int, str]) == (1, "str")
+
+
+def test_mapping_converter():
+    conv = converters.MappingConverter()
+
+    assert conv.can_convert(Dict)
 
 
 def test_enum_converter():
@@ -34,6 +40,11 @@ def test_enum_converter():
 TESTS = [
     ("4", int, 4),
     ("4", float, 4.),
+
+    ("3", Iterable[int], [3]),
+    ([5, 3, 2], Set[str], {"2", "3", "5"}),
+
+    ({"test": 5}, Mapping[str, str], {"test": "5"})
 ]
 
 

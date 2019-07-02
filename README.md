@@ -4,14 +4,10 @@
 [![PyPI](https://img.shields.io/pypi/v/konfi.svg)](https://pypi.org/project/konfi/)
 [![Documentation Status](https://readthedocs.org/projects/konfi/badge/?version=latest)](https://konfi.giesela.dev/en/latest/?badge=latest)
 
-Cute config parser.
-You know I really tried to come up with a catchy one-liner there, but 
-It goes without saying that I failed miserably.
-
-Anyway, konfi lets you create config templates similar to 
+konfi lets you create config templates similar to 
 [dataclasses](https://docs.python.org/3/library/dataclasses.html). 
 These templates are then used to load the config from different sources.
-Konfi guarantees that the loaded config corresponds to the template even
+konfi guarantees that the loaded config corresponds to the template even
 going as far as making sure items of a list are of the right type.
 
 This means you no longer have to worry about the validity of the config,

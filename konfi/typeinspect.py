@@ -1,7 +1,7 @@
 """Runtime introspection for typings."""
 
 import inspect
-from typing import Any, Generic, Optional, Tuple, Type, TypeVar, Union, _GenericAlias
+from typing import Any, Generic, Iterable, Mapping, Optional, Tuple, TypeVar, Union, _GenericAlias
 
 TypeTuple = Tuple[type, ...]
 TypeTuple.__doc__ = \
@@ -10,11 +10,23 @@ TypeTuple.__doc__ = \
 NoneType = type(None)
 
 
+def class_and_subclass(typ: type, cls: type) -> bool:
+    return inspect.isclass(typ) and issubclass(typ, cls)
+
+
 def get_origin(typ: type) -> Optional[type]:
     if isinstance(typ, _GenericAlias):
         return typ.__origin__
 
     return None
+
+
+def has_origin(typ: type, origin: type) -> bool:
+    typ_origin = get_origin(typ)
+    if typ_origin is None:
+        return False
+
+    return class_and_subclass(typ_origin, origin)
 
 
 def get_type_args(typ: type) -> TypeTuple:
@@ -25,7 +37,7 @@ def get_type_args(typ: type) -> TypeTuple:
 
 
 def is_any(typ: type) -> bool:
-    # TODO typevar
+    # TODO typevar?
     return typ is Any
 
 
@@ -36,7 +48,7 @@ def is_union(typ: type) -> bool:
 def is_tuple(typ: type) -> bool:
     return typ is Tuple \
            or get_origin(typ) is tuple \
-           or is_generic(typ) and issubclass(typ, tuple)
+           or is_generic(typ) and class_and_subclass(typ, tuple)
 
 
 def is_typevar(typ: type) -> bool:
@@ -44,8 +56,16 @@ def is_typevar(typ: type) -> bool:
 
 
 def is_generic(typ: type) -> bool:
-    # TODO maybe exclude tuple, union and so on
-    return inspect.isclass(typ) and issubclass(typ, Generic)
+    return class_and_subclass(typ, Generic) \
+           or isinstance(typ, _GenericAlias)
+
+
+def is_generic_iterable(typ: type) -> bool:
+    return is_generic(typ) and has_origin(typ, Iterable)
+
+
+def is_generic_mapping(typ: type) -> bool:
+    return is_generic(typ) and has_origin(typ, Mapping)
 
 
 def is_optional(typ: type) -> bool:
@@ -67,15 +87,11 @@ def resolve_tuple(typ: type) -> Tuple[TypeTuple, Optional[int]]:
         return args, len(args)
 
 
-def resolve_item_type(typ: type) -> type:
-    pass
-
-
-def _has_union_type(obj: Any, union: Union) -> bool:
+def _has_union_type(obj: Any, union: type) -> bool:
     return any(has_type(obj, typ) for typ in get_type_args(union))
 
 
-def _has_tuple_type(obj: Any, tup: Type[Tuple]) -> bool:
+def _has_tuple_type(obj: Any, tup: type) -> bool:
     if not isinstance(obj, tuple):
         return False
 
@@ -89,6 +105,24 @@ def _has_tuple_type(obj: Any, tup: Type[Tuple]) -> bool:
         return all(has_type(val, typ) for val, typ in zip(obj, types))
 
 
+def _has_generic_iterable_type(obj: Any, iter_type: type) -> bool:
+    container_type = get_origin(iter_type)
+    if not has_type(obj, container_type):
+        return False
+
+    item_type = get_type_args(iter_type)[0]
+    return all(has_type(item, item_type) for item in obj)
+
+
+def _has_generic_mapping_type(obj: Any, map_type: type) -> bool:
+    container_type = get_origin(map_type)
+    if not has_type(obj, container_type):
+        return False
+
+    key_type, value_type = get_type_args(map_type)
+    return all(has_type(key, key_type) and has_type(value, value_type) for key, value in obj.items())
+
+
 def has_type(obj: Any, typ: type) -> bool:
     if is_any(typ):
         return True
@@ -99,7 +133,11 @@ def has_type(obj: Any, typ: type) -> bool:
     if is_tuple(typ):
         return _has_tuple_type(obj, typ)
 
-    # TODO handle generic containers
+    if is_generic_iterable(typ):
+        return _has_generic_iterable_type(obj, typ)
+
+    if is_generic_mapping(typ):
+        return _has_generic_mapping_type(obj, typ)
 
     # TODO this doesn't feel safe
     return isinstance(obj, typ)
