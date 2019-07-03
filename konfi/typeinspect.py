@@ -1,7 +1,8 @@
 """Runtime introspection for typings."""
 
 import inspect
-from typing import Any, Generic, Iterable, Mapping, Optional, Tuple, TypeVar, Union, _GenericAlias
+from typing import Any, Generic, Iterable, Mapping, Optional, Tuple, TypeVar, \
+    Union, _GenericAlias
 
 TypeTuple = Tuple[type, ...]
 TypeTuple.__doc__ = \
@@ -141,3 +142,15 @@ def has_type(obj: Any, typ: type) -> bool:
 
     # TODO this doesn't feel safe
     return isinstance(obj, typ)
+
+
+def friendly_name(typ: Any) -> str:
+    if inspect.isclass(typ) and typ.__module__ == "builtins":
+        return typ.__qualname__
+    else:
+        if is_union(typ):
+            args = get_type_args(typ)
+            if len(args) == 2 and args[1] is NoneType:
+                return f"typing.Optional[{friendly_name(args[0])}]"
+
+        return repr(typ)

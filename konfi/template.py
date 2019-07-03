@@ -56,6 +56,13 @@ def _make_template(cls: type):
 def template():
     """Decorator to convert the given class to a template.
 
+    This parses the decorated class into a template which can be used to
+    load the config.
+    The fields are loaded from the annotations from the class. If an attribute
+    has a value it is used as the default value, unless it's an unbound field
+    (see `konfi.field`) which is used directly and the class variable is
+    replaced.
+
     Raises:
         ValueError: If the decorated object isn't a class.
         TypeError: If one of the fields has an invalid type.

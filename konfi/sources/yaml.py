@@ -29,7 +29,10 @@ class YAML(konfi.SourceABC):
         return f"YAML: {self._path!r}"
 
     def load_into(self, obj: Any, template: Type) -> None:
-        import yaml
+        try:
+            import yaml
+        except ImportError as e:
+            raise ImportError("Couldn't import 'pyyaml' package. Make sure it's installed.") from e
 
         try:
             with open(self._path, "r") as f:

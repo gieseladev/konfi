@@ -5,6 +5,7 @@ Welcome to konfi's documentation!
     :maxdepth: 2
     :caption: Contents:
 
+    converters
     api
 
 

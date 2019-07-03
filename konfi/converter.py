@@ -2,7 +2,7 @@ import abc
 import functools
 import inspect
 import logging
-from typing import Any, Callable, Generic, Iterable, List, MutableMapping, Optional, Type, TypeVar, Union, overload
+from typing import Any, Callable, Generic, Iterable, List, MutableMapping, Optional, Set, Type, TypeVar, Union, overload
 
 from . import typeinspect
 
@@ -180,22 +180,22 @@ def _call_converter(conv: ConverterType, value: Any, target: Type) -> Any:
     except ConversionError as e:
         raise e
     except Exception as e:
-        # TODO use some sort of "friendly_name" function to get {target}
-        raise ConversionError(f"Couldn't convert {value!r} to {target} using {conv}") from e
+        raise ConversionError(f"Couldn't convert {value!r} to "
+                              f"{typeinspect.friendly_name(target)} using {conv}") from e
 
 
 T = TypeVar("T")
 
 
 @overload
-def convert_value(value: Any, target: Type[T]) -> T: ...
+def convert_value(value: Any, target: Type[T], *, exclude_converters: Set[ConverterType] = None) -> T: ...
 
 
 @overload
-def convert_value(value: Any, target: type) -> Any: ...
+def convert_value(value: Any, target: type, *, exclude_converters: Set[ConverterType] = None) -> Any: ...
 
 
-def convert_value(value: Any, target: Type[T]) -> T:
+def convert_value(value: Any, target: Type[T], *, exclude_converters: Set[ConverterType] = None) -> T:
     """Convert the value to the given type.
 
     If no converter was found but the target type is a class,
@@ -204,18 +204,31 @@ def convert_value(value: Any, target: Type[T]) -> T:
     If the value already has the target type, it is returned even if no
     converters are found.
 
+    Args:
+        value: Value to convert
+        target: Target type to convert to.
+
+        exclude_converters: Set of converter types to exclude.
+            Note that this only excludes the converters from this call,
+            if a converter further down the line calls this function the
+            exclusion no longer applies.
+
     Raises:
         ConversionError: If the conversion failed.
     """
     converters = get_converters(target)
 
-    # TODO let's raise the first exception instead
-
     last_exception: Optional[Exception] = None
     for c in converters:
+        if exclude_converters and c in exclude_converters:
+            continue
+
         try:
             converted = _call_converter(c, value, target)
         except ConversionError as e:
+            if last_exception is not None:
+                e.__cause__ = last_exception
+
             last_exception = e
         else:
             return converted

@@ -3,50 +3,58 @@
 import enum
 import functools
 import inspect
-from typing import Any, Callable, Dict, Iterable, List, Mapping, MutableMapping, Optional, Set, Tuple, TypeVar, cast
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, TypeVar, cast
 
 from . import typeinspect
 from .converter import ComplexConverterABC, ConversionError, convert_value, register_converter
 
 T = TypeVar("T")
 
+
 # <-- converter groups -------------------------------------------------------->
 
-# primitive types
-for conv in (
-        bool,
-        int, float, complex,
-        str, bytes,
-):
-    register_converter(conv)(conv)
-
-del conv
+def _register_primitive_converters(converters: Iterable[type]) -> None:
+    for conv in converters:
+        register_converter(conv)(conv)
 
 
-def _make_converter(cls: Callable):
-    @functools.wraps(cls)
-    def converter(val: Any):
-        val = convert_value(val, Iterable)
-        if not isinstance(val, cls):
-            val = cls(val)
+_register_primitive_converters((
+    bool,
+    int, float, complex,
+    str, bytes,
+))
 
-        return val
-
-    return converter
+del _register_primitive_converters
 
 
-# iterable types
-for convs in (
-        (Tuple, tuple),
-        (List, list),
-        (Set, set),
+def _register_container_converters(converters: Iterable[Tuple[Tuple[type, ...], type]]) -> None:
+    def _make_converter(cls: Callable, base_type: type):
+        @functools.wraps(cls)
+        def converter(val: Any):
+            val = convert_value(val, base_type)
+            if not isinstance(val, cls):
+                val = cls(val)
 
-        (Mapping, MutableMapping, Dict, dict),
-):
-    cls = cast(Callable, convs[-1])
-    register_converter(*convs)(_make_converter(cls))
+            return val
 
-del convs
+        return converter
+
+    for convs, base in converters:
+        register_converter(*convs)(_make_converter(
+            cast(Callable, convs[-1]),
+            base,
+        ))
+
+
+_register_container_converters((
+    ((Tuple, tuple), Iterable),
+    ((List, list), Iterable),
+    ((Set, set), Iterable),
+
+    ((Dict, dict), Mapping),
+))
+
+del _register_container_converters
 
 
 # <-- simple converters ------------------------------------------------------->
@@ -77,6 +85,16 @@ def iterable_converter(value: Any) -> Iterable:
     else:
         # yes it looks weird, but this is a tuple
         return value,
+
+
+@register_converter(Mapping)
+def mapping_converter(value: Any) -> Mapping:
+    if isinstance(value, Mapping):
+        return value
+    elif isinstance(value, Sequence):
+        return dict(enumerate(value))
+    else:
+        raise ConversionError(f"can't convert {value!r} to a Mapping")
 
 
 # <-- complex converters ------------------------------------------------------>
@@ -133,8 +151,6 @@ class TupleConverter(ComplexConverterABC):
 
 # TODO Template-like converter
 
-# TODO make sure we don't end up recursing on the same converter
-
 @register_converter()
 class IterableConverter(ComplexConverterABC):
     def can_convert(self, target: type) -> bool:
@@ -153,13 +169,13 @@ class IterableConverter(ComplexConverterABC):
             try:
                 v = convert_value(sub_value, item_type)
             except ConversionError as e:
-                # TODO typeinspect.friendly_name
-                raise ConversionError(f"couldn't convert value at index {i} ({sub_value!r}) to {item_type}") from e
+                raise ConversionError(f"couldn't convert value at index {i} ({sub_value!r}) "
+                                      f"to {typeinspect.friendly_name(item_type)}") from e
 
             final_list.append(v)
 
         if container_type is not None:
-            final_list = convert_value(final_list, container_type)
+            final_list = convert_value(final_list, container_type, exclude_converters={self})
 
         return final_list
 
@@ -180,19 +196,19 @@ class MappingConverter(ComplexConverterABC):
             try:
                 k = convert_value(key, key_type)
             except ConversionError as e:
-                # TODO typeinspect.friendly_name
-                raise ConversionError(f"couldn't convert key {key!r} to {key_type}") from e
+                raise ConversionError(f"couldn't convert key {key!r} to "
+                                      f"{typeinspect.friendly_name(key_type)}") from e
 
             try:
                 v = convert_value(value, value_type)
             except ConversionError as e:
-                # TODO typeinspect.friendly_name
-                raise ConversionError(f"couldn't convert value of {key!r} ({value!r}) to {value_type}") from e
+                raise ConversionError(f"couldn't convert value of {key!r} ({value!r}) "
+                                      f"to {typeinspect.friendly_name(value_type)}") from e
 
             final_map[k] = v
 
         if container_type is not None:
-            final_map = convert_value(final_map, container_type)
+            final_map = convert_value(final_map, container_type, exclude_converters={self})
 
         return final_map
 
@@ -233,4 +249,4 @@ class EnumConverter(ComplexConverterABC):
                 if isinstance(field_val, str) and field_val.lower() == value_lower:
                     return enum_field
 
-        raise ConversionError(f"{value!r} isn't in enum {target.__qualname__!r}")
+        raise ConversionError(f"{value!r} isn't in enum {typeinspect.friendly_name(target)}")

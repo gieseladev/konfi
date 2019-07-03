@@ -18,11 +18,11 @@ setuptools.setup(
 
     packages=setuptools.find_packages(exclude=("examples", "tests")),
 
-    entry_points={
-        "console_scripts": [
-            "konfi=konfi.cli:main",
-        ]
-    },
+    # entry_points={
+    #     "console_scripts": [
+    #         "konfi=konfi.cli:main",
+    #     ]
+    # },
 
     install_requires=["toml", "pyyaml"],
 

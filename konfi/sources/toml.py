@@ -20,7 +20,10 @@ class TOML(konfi.SourceABC):
         return f"TOML: {self._path!r}"
 
     def load_into(self, obj: Any, template: type) -> None:
-        import toml
+        try:
+            import toml
+        except ImportError as e:
+            raise ImportError("Couldn't import the 'toml' package. Make sure it's installed.") from e
 
         try:
             data = toml.load(self._path)

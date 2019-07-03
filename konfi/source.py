@@ -28,6 +28,9 @@ class SourceABC(abc.ABC):
 class PathError(Exception):
     """General exception in a template path.
 
+    The path represents the config keys, which is not necessarily the same
+    as the attributes.
+
     Attributes:
         path (List[str]): Path to the origin of the exception.
     """
@@ -134,7 +137,6 @@ def load_field_value(obj: Any, field: konfi.Field, value: Any) -> None:
             # TODO clean
             converted = konfi.converter._call_converter(field.converter, value, field.value_type)
     except konfi.ConversionError as e:
-        # TODO typeinspect.friendly_name
         raise FieldError([field.key], field, str(e)) from e
 
     setattr(obj, field.attribute, converted)
@@ -177,8 +179,7 @@ def load_fields_values(obj: Any, fields: Iterable[konfi.Field], mapping: Mapping
             if ignore_unknown:
                 continue
             else:
-                # TODO raise something else
-                raise NotImplementedError(f"unknown config key: {key!r}")
+                raise PathError([key], f"unexpected config key: {key!r}")
 
         if konfi.is_template_like(field.value_type) and isinstance(value, Mapping):
             sub_obj = _get_sub_obj(obj, field)

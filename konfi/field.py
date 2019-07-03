@@ -187,7 +187,11 @@ def field(*, key: str = None, comment: str = None,
           default: Any = MISSING, factory: ValueFactory = None,
           converter: ConverterType = None,
           ) -> UnboundField:
-    """Create a field.
+    """Specify a field options.
+
+    This creates an unbound field which is later upgraded to a bound field when
+    the template is created. The class variable is also replaced with the
+    default value of the field and if no default value exists, it is removed.
 
     Args:
         key: Config key to use (instead of the attribute name).

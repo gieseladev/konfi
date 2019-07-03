@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, TypeVar, Union
 
 import pytest
 
@@ -43,8 +43,9 @@ def test_is_tuple():
 
 
 def test_is_typevar():
-    # TODO urgh
-    pass
+    t = TypeVar("T")
+
+    assert typeinspect.is_typevar(t)
 
 
 def test_is_generic():
@@ -80,3 +81,9 @@ TESTS = [
 @pytest.mark.parametrize("val,typ", TESTS)
 def test_has_type(val: Any, typ: type):
     assert typeinspect.has_type(val, typ)
+
+
+def test_friendly_name():
+    assert typeinspect.friendly_name(str) == "str"
+    assert typeinspect.friendly_name(List[str]) == "typing.List[str]"
+    assert typeinspect.friendly_name(Optional[str]) == "typing.Optional[str]"
