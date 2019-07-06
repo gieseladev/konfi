@@ -50,7 +50,7 @@ class PathError(Exception):
     @property
     def path_str(self) -> str:
         """Get the path as a string."""
-        return " -> ".join(f"{path!r}" for path in self.path)
+        return ".".join(f"{path!r}" for path in self.path)
 
     def backtrace_path(self, part: str) -> None:
         """Add a part to the path."""
@@ -74,13 +74,8 @@ class MultiPathError(PathError):
 
     def __str__(self) -> str:
         import textwrap
-
-        path_str = self.path_str
-        if path_str:
-            path_str = f"{path_str}: "
-
         errors_str = textwrap.indent("\n".join(map(str, self.errors)), "  ")
-        return f"{path_str}{super().__str__()}:\n{errors_str}"
+        return f"{super().__str__()}:\n{errors_str}"
 
 
 class FieldError(PathError):
@@ -146,7 +141,7 @@ def _get_sub_obj(obj: Any, field: konfi.Field) -> Any:
     try:
         value = getattr(obj, field.attribute)
     except AttributeError:
-        value = object.__new__(field.value_type)
+        value = konfi.create_object_from_template(field.value_type)
         setattr(obj, field.attribute, value)
 
     return value

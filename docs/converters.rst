@@ -6,6 +6,10 @@ provide full type-safety to templates.
 
 You can add new converters by using the `konfi.register_converter`
 decorator or simply passing the converter argument to `konfi.field`.
+Since last registered converters are used first, you can overwrite a
+built-in converter by registering a new converter for the same type
+(Regardless of complex or not). The old converter(s) will be used as a
+fallback if the new one raises an exception.
 
 Converters should be stable i.e. if a value already has the correct type, the
 converter should return the same value (not necessarily the same value by
@@ -70,6 +74,12 @@ Builtin converters
 |                          | container type.                                   |
 +--------------------------+---------------------------------------------------+
 | `Mapping`\[K, V]         | Works analogous to `Iterable`\[T].                |
++--------------------------+---------------------------------------------------+
+| Template-like            | Exists mainly for templates in containers like    |
+|                          | `List[MyTemplate]` or `Dict[str, MyTemplate]`.    |
+|                          | It's not used for nested templates and custom     |
+|                          | sources shouldn't use it, because it requires     |
+|                          | the value to be complete.                         |
 +--------------------------+---------------------------------------------------+
 | `enum.Enum`              | Tries to find the appropriate member in the       |
 |                          | following order:                                  |

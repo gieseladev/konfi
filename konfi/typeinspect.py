@@ -37,6 +37,17 @@ def get_type_args(typ: type) -> TypeTuple:
     return ()
 
 
+def get_parameters(typ: type) -> TypeTuple:
+    if isinstance(typ, _GenericAlias):
+        return typ.__parameters__
+
+    return ()
+
+
+def has_free_parameters(typ: type) -> bool:
+    return len(get_parameters(typ)) > 0
+
+
 def is_any(typ: type) -> bool:
     # TODO typevar?
     return typ is Any

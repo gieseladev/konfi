@@ -1,7 +1,7 @@
 import dataclasses
 import functools
 import inspect
-from typing import Any, Dict, List, Optional, Tuple, get_type_hints
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, get_type_hints, overload
 
 from .converter import has_converter
 from .field import Field, MISSING, NoDefaultValue, UnboundField, upgrade_unbound
@@ -9,6 +9,7 @@ from .source import FieldError, MultiPathError, PathError
 
 __all__ = ["template", "is_template", "is_template_like",
            "fields", "get_field",
+           "create_object_from_template",
            "ensure_complete"]
 
 _FIELDS_ATTR = "__template_fields__"
@@ -143,6 +144,29 @@ def get_field(obj: Any, attr: str) -> Optional[Field]:
         The field for the attribute or `None` if no such field exists.
     """
     return _get_fields(obj).get(attr)
+
+
+T = TypeVar("T")
+
+
+@overload
+def create_object_from_template(templ: type) -> Any: ...
+
+
+@overload
+def create_object_from_template(templ: Type[T]) -> T: ...
+
+
+def create_object_from_template(templ: Type[T]) -> T:
+    """Create an empty object for the given template.
+
+    Args:
+        templ: Template-like object to create an instance for.
+
+    Returns:
+        New object which is an instance of the template.
+    """
+    return object.__new__(templ)
 
 
 def ensure_complete(obj: Any, templ: type) -> None:

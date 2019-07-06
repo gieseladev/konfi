@@ -1,5 +1,5 @@
 import enum
-from typing import Any, Dict, Iterable, Mapping, Set, Tuple, Union
+from typing import Any, Dict, Iterable, List, Mapping, Set, Tuple, Union
 
 import pytest
 
@@ -22,7 +22,21 @@ def test_tuple_converter():
 def test_mapping_converter():
     conv = converters.MappingConverter()
 
-    assert conv.can_convert(Dict)
+    assert not conv.can_convert(Dict)
+    assert conv.can_convert(Dict[str, int])
+
+
+def test_template_converter():
+    @konfi.template()
+    class Template:
+        a: str
+        b: str
+
+    raw = [{"a": "lol", "b": 5}]
+
+    v1, = konfi.convert_value(raw, List[Template])
+    assert v1.a == "lol"
+    assert v1.b == "5"
 
 
 def test_enum_converter():

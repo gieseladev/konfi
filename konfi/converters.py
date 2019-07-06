@@ -1,17 +1,21 @@
 """Built-in converters."""
 
+import collections.abc as collections
 import enum
 import functools
 import inspect
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, TypeVar, cast
 
-from . import typeinspect
-from .converter import ComplexConverterABC, ConversionError, convert_value, register_converter
+from . import source, templ, typeinspect
+from .converter import ComplexConverterABC, ConversionError, convert_value, has_converter, register_converter
 
 T = TypeVar("T")
 
 
 # <-- converter groups -------------------------------------------------------->
+
+# primitive types which can be called with multiple input types to get the
+# desired type.
 
 def _register_primitive_converters(converters: Iterable[type]) -> None:
     for conv in converters:
@@ -26,6 +30,9 @@ _register_primitive_converters((
 
 del _register_primitive_converters
 
+
+# types which are first converted to a general type (read: interface)
+# and then converted to the real type.
 
 def _register_container_converters(converters: Iterable[Tuple[Tuple[type, ...], type]]) -> None:
     def _make_converter(cls: Callable, base_type: type):
@@ -71,7 +78,7 @@ def any_convert(val: Any) -> Any:
     return val
 
 
-@register_converter(Iterable)
+@register_converter(Iterable, collections.Iterable)
 def iterable_converter(value: Any) -> Iterable:
     """Converts the value to an iterable.
 
@@ -80,6 +87,7 @@ def iterable_converter(value: Any) -> Iterable:
     Even though strings are iterable, this converter does not treat them as such
     to be consistent with the user's expectations.
     """
+    # TODO special handling for mappings?
     if isinstance(value, Iterable) and not isinstance(value, (str,)):
         return value
     else:
@@ -87,8 +95,13 @@ def iterable_converter(value: Any) -> Iterable:
         return value,
 
 
-@register_converter(Mapping)
+@register_converter(Mapping, collections.Mapping)
 def mapping_converter(value: Any) -> Mapping:
+    """Converts the value to a mapping,
+
+    Sequences are interpreted as a mapping from index to value.
+    All other value types raise a `ConversionError`.
+    """
     if isinstance(value, Mapping):
         return value
     elif isinstance(value, Sequence):
@@ -131,12 +144,20 @@ class UnionConverter(ComplexConverterABC):
 
 @register_converter()
 class TupleConverter(ComplexConverterABC):
-    """Converter for typed tuples."""
+    """Converter for typed tuples.
+
+    The input value is first converted to a collection, if the tuple
+    type has a fixed length the input must match that, otherwise any
+    length is accepted.
+    """
 
     def can_convert(self, target: type) -> bool:
+        # TODO don't accept subtypes of tuple or actually return the
+        #  proper type
         return typeinspect.is_tuple(target)
 
     def convert(self, value: Any, target: type) -> tuple:
+        # convert to a collection
         values = convert_value(value, list)
 
         types, n = typeinspect.resolve_tuple(target)
@@ -149,14 +170,26 @@ class TupleConverter(ComplexConverterABC):
             return tuple(convert_value(val, typ) for val, typ in zip(values, types))
 
 
-# TODO Template-like converter
-
 @register_converter()
 class IterableConverter(ComplexConverterABC):
+    """Converts the value to a typed iterable.
+
+    The value is first converted to an untyped `Iterable`.
+    All items are converted to the item type and gathered in a `list`.
+    The list is then converted to the container type.
+    """
     def can_convert(self, target: type) -> bool:
-        return typeinspect.is_generic_iterable(target) \
-               and not typeinspect.is_tuple(target) \
-               and not typeinspect.is_generic_mapping(target)
+        is_iterable = typeinspect.is_generic_iterable(target) \
+                      and not typeinspect.has_free_parameters(target) \
+                      and not typeinspect.is_tuple(target) \
+                      and not typeinspect.is_generic_mapping(target)
+
+        if not is_iterable:
+            return False
+
+        container_type = typeinspect.get_origin(target)
+        item_type = typeinspect.get_type_args(target)[0]
+        return has_converter(container_type) and has_converter(item_type)
 
     def convert(self, value: Any, target: type) -> Iterable[T]:
         container_type = typeinspect.get_origin(target)
@@ -182,8 +215,25 @@ class IterableConverter(ComplexConverterABC):
 
 @register_converter()
 class MappingConverter(ComplexConverterABC):
+    """Converts the value to a mapping.
+
+    The value is first converted to an untyped `Mapping`.
+    A `dict` is which maps the keys converted to the key type to
+    the values converted to the value type.
+    This dict is then converted to the container type.
+    """
     def can_convert(self, target: type) -> bool:
-        return typeinspect.is_generic_mapping(target)
+        is_mapping = typeinspect.is_generic_mapping(target) \
+                     and not typeinspect.has_free_parameters(target)
+        if not is_mapping:
+            return False
+
+        container_type = typeinspect.get_origin(target)
+        key_type, value_type = typeinspect.get_type_args(target)
+
+        return has_converter(container_type) \
+               and has_converter(key_type) \
+               and has_converter(value_type)
 
     def convert(self, value: Any, target: type) -> Iterable[T]:
         container_type = typeinspect.get_origin(target)
@@ -211,6 +261,31 @@ class MappingConverter(ComplexConverterABC):
             final_map = convert_value(final_map, container_type, exclude_converters={self})
 
         return final_map
+
+
+@register_converter()
+class TemplateConverter(ComplexConverterABC):
+    """Converter which converts the value to a template-like object.
+
+    This converter exists mainly for templates used in containers like
+    `List[MyTemplate]` or `Dict[str, MyTemplate]`.
+
+    It also requires that the value is a complete template object. This
+    is why it shouldn't be used by a source.
+    """
+
+    def can_convert(self, target: type) -> bool:
+        return templ.is_template_like(target)
+
+    def convert(self, value: Any, target: type) -> Any:
+        value_map = convert_value(value, Mapping)
+
+        fields = templ.fields(target)
+        obj = templ.create_object_from_template(target)
+        source.load_fields_values(obj, fields, value_map)
+        templ.ensure_complete(obj, target)
+
+        return obj
 
 
 @register_converter()

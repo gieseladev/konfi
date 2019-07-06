@@ -2,7 +2,7 @@ import inspect
 from typing import List, Type, TypeVar, Union
 
 from .source import SourceABC
-from .template import ensure_complete, is_template_like
+from .templ import create_object_from_template, ensure_complete, is_template_like
 
 __all__ = ["SourceError", "Loader"]
 
@@ -64,7 +64,7 @@ class Loader:
             raise TypeError(f"Template must be template-like, not {template!r}")
 
         if inspect.isclass(template):
-            obj = object.__new__(template)
+            obj = create_object_from_template(template)
         else:
             obj = template
             template = type(template)

@@ -28,6 +28,13 @@ def test_get_type_args():
     assert typeinspect.get_type_args(Tuple[str, ...]) == (str, Ellipsis)
 
 
+def test_get_parameters():
+    assert len(typeinspect.get_parameters(List)) == 1
+    assert len(typeinspect.get_parameters(Dict)) == 2
+    assert len(typeinspect.get_parameters(Dict[str, int])) == 0
+    assert len(typeinspect.get_parameters(List[str])) == 0
+
+
 def test_is_any():
     assert typeinspect.is_any(Any)
 
