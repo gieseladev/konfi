@@ -86,8 +86,13 @@ def iterable_converter(value: Any) -> Iterable:
 
     Even though strings are iterable, this converter does not treat them as such
     to be consistent with the user's expectations.
+
+    The same is true for mappings which is converted to an iterable of key,
+    value tuples instead of just the keys.
     """
-    # TODO special handling for mappings?
+    if isinstance(value, Mapping):
+        return value.items()
+
     if isinstance(value, Iterable) and not isinstance(value, (str,)):
         return value
     else:
@@ -121,7 +126,7 @@ class UnionConverter(ComplexConverterABC):
     """
 
     def can_convert(self, target: type) -> bool:
-        return typeinspect.is_union(target)
+        return typeinspect.is_union(target) and all(map(has_converter, typeinspect.get_type_args(target)))
 
     def convert(self, value: Any, target: type) -> Any:
         if typeinspect.has_type(value, target):
@@ -152,9 +157,15 @@ class TupleConverter(ComplexConverterABC):
     """
 
     def can_convert(self, target: type) -> bool:
-        # TODO don't accept subtypes of tuple or actually return the
-        #  proper type
-        return typeinspect.is_tuple(target)
+        is_tuple = typeinspect.is_tuple(target) \
+                   and not typeinspect.has_free_parameters(target)
+
+        if not is_tuple:
+            return False
+
+        container_type = typeinspect.get_origin(target)
+        item_types = typeinspect.resolve_tuple(target)[0]
+        return has_converter(container_type) and all(map(has_converter, item_types))
 
     def convert(self, value: Any, target: type) -> tuple:
         # convert to a collection
@@ -178,6 +189,7 @@ class IterableConverter(ComplexConverterABC):
     All items are converted to the item type and gathered in a `list`.
     The list is then converted to the container type.
     """
+
     def can_convert(self, target: type) -> bool:
         is_iterable = typeinspect.is_generic_iterable(target) \
                       and not typeinspect.has_free_parameters(target) \
@@ -222,6 +234,7 @@ class MappingConverter(ComplexConverterABC):
     the values converted to the value type.
     This dict is then converted to the container type.
     """
+
     def can_convert(self, target: type) -> bool:
         is_mapping = typeinspect.is_generic_mapping(target) \
                      and not typeinspect.has_free_parameters(target)

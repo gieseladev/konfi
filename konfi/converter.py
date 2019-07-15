@@ -2,7 +2,8 @@ import abc
 import functools
 import inspect
 import logging
-from typing import Any, Callable, Generic, Iterable, List, MutableMapping, Optional, Set, Type, TypeVar, Union, overload
+from typing import Any, Callable, Generic, Iterable, List, MutableMapping, Optional, Set, Type, TypeVar, Union, \
+    overload, Tuple
 
 from . import typeinspect
 
@@ -129,6 +130,7 @@ def register_converter(*types: Type):
                 cs = _CONVERTERS.setdefault(typ, [])
                 cs.append(target)
 
+        _clear_converter_cache()
         return target
 
     return decorator
@@ -177,6 +179,13 @@ def unregister_converter(conv: ConverterType, *types: type) -> None:
             except ValueError:
                 pass
 
+    _clear_converter_cache()
+
+
+@functools.lru_cache(maxsize=None)
+def _get_complex_converters(target: Type) -> Tuple[ComplexConverterABC]:
+    return tuple(c for c in reversed(_COMPLEX_CONVERTERS) if c.can_convert(target))
+
 
 def get_converters(target: Type) -> Iterable[ConverterType]:
     """Get the converters for the given target type.
@@ -186,11 +195,13 @@ def get_converters(target: Type) -> Iterable[ConverterType]:
     """
     # iterate in reverse because we want custom converters to override built-ins
     try:
-        converters = _CONVERTERS[target]
+        return tuple(reversed(_CONVERTERS[target]))
     except KeyError:
-        converters = [c for c in _COMPLEX_CONVERTERS if c.can_convert(target)]
+        return _get_complex_converters(target)
 
-    return reversed(converters)
+
+def _clear_converter_cache() -> None:
+    _get_complex_converters.cache_clear()
 
 
 def has_converter(target: Type) -> bool:
