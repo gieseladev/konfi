@@ -33,4 +33,4 @@ if __name__ == "__main__":
 
     config = konfi.load(Config)
 
-    print(f"it's {config.temp} at {config.loc}")
+    print(f"it's {config.temp} in {config.loc}")

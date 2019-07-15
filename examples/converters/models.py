@@ -13,7 +13,15 @@ class Location:
         self.longitude = long
 
     def __str__(self) -> str:
-        return f"({self.latitude}, {self.longitude})"
+        try:
+            return self._location().address
+        except Exception:
+            return f"({self.latitude}, {self.longitude})"
+
+    def _location(self):
+        from geopy.geocoders import Nominatim
+        geolocator = Nominatim(user_agent="konfi-converters-example/1.0 (https://github.com/gieseladev/konfi)")
+        return geolocator.reverse((self.latitude, self.longitude), addressdetails=False)
 
 
 # let's also define a nice temperature data structure
