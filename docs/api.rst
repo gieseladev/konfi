@@ -73,6 +73,8 @@ Converter
 
 .. autodecorator:: register_converter
 
+.. autofunction:: unregister_converter
+
 .. autodata:: ConverterType
 
 .. autodata:: ConverterFunc

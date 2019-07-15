@@ -8,7 +8,8 @@ from . import typeinspect
 
 __all__ = ["ConverterABC", "ConverterFunc", "ConverterType", "ComplexConverterABC",
            "is_converter_type", "is_complex_converter",
-           "register_converter", "get_converters", "has_converter",
+           "register_converter", "unregister_converter",
+           "get_converters", "has_converter",
            "ConversionError", "convert_value"]
 
 log = logging.getLogger(__name__)
@@ -68,7 +69,8 @@ def is_converter_type(obj: Any) -> bool:
     if isinstance(obj, ConverterABC) or inspect.isclass(obj) and issubclass(obj, ConverterABC):
         return True
 
-    # TODO check signature
+    # we could check the signature too, but at some point we just have to
+    # trust the user
     return callable(obj)
 
 
@@ -99,7 +101,7 @@ def register_converter(*types: Type):
     Raises:
         TypeError: If the decorated object isn't a converter type.
         ValueError: If no types are provided but the converter
-            isn't a complex converter.
+            isn't a complex converter or vice versa.
     """
 
     def decorator(target: ConverterType):
@@ -107,6 +109,9 @@ def register_converter(*types: Type):
             raise TypeError("decorated object must be a converter.")
 
         if is_complex_converter(target):
+            if types:
+                raise ValueError("no types can be given for complex converters, use the can_convert method instead.")
+
             if inspect.isclass(target):
                 try:
                     target_inst = target()
@@ -129,7 +134,49 @@ def register_converter(*types: Type):
     return decorator
 
 
-# TODO unregister_converter
+def unregister_converter(conv: ConverterType, *types: type) -> None:
+    """Unregister the given converter from the given types.
+
+    Args:
+        conv: Converter to unregister
+        *types: Types to unregister converter from. If empty, the converter
+            is unregistered from all types.
+
+    Raises:
+        TypeError: If the given converter is a complex converter and types
+            are given.
+    """
+    if is_complex_converter(conv):
+        if types:
+            raise TypeError("can't unregister a complex converter from specific types")
+
+        if inspect.isclass(conv):
+            for _conv in reversed(_COMPLEX_CONVERTERS):
+                if type(_conv) is conv:
+                    conv = _conv
+                    break
+            else:
+                return
+
+        try:
+            _COMPLEX_CONVERTERS.remove(conv)
+        except ValueError:
+            return
+    else:
+        if not types:
+            types = _CONVERTERS.keys()
+
+        for typ in types:
+            try:
+                converters = _CONVERTERS[typ]
+            except KeyError:
+                continue
+
+            try:
+                converters.remove(conv)
+            except ValueError:
+                pass
+
 
 def get_converters(target: Type) -> Iterable[ConverterType]:
     """Get the converters for the given target type.
