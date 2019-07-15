@@ -1,8 +1,9 @@
 """Runtime introspection for typings."""
 
 import inspect
+import sys
 from typing import Any, Generic, Iterable, Mapping, Optional, Tuple, TypeVar, \
-    Union, _GenericAlias
+    Union, _GenericAlias, _eval_type, Dict, ForwardRef
 
 TypeTuple = Tuple[type, ...]
 TypeTuple.__doc__ = \
@@ -165,3 +166,29 @@ def friendly_name(typ: Any) -> str:
                 return f"typing.Optional[{friendly_name(args[0])}]"
 
         return repr(typ)
+
+
+def get_class_type_hints_strict(cls: type,
+                                globalns: Mapping[str, Any] = None,
+                                localns: Mapping[str, Any] = None
+                                ) -> Dict[str, type]:
+    if not inspect.isclass(cls):
+        raise TypeError("cls needs to be a class. Use typing.get_type_hints for other types")
+
+    if globalns is None:
+        globalns = sys.modules[cls.__module__].__dict__
+
+    ann = cls.__dict__.get("__annotations__", {})
+
+    hints = {}
+
+    for name, value in ann.items():
+        if value is None:
+            value = type(None)
+        if isinstance(value, str):
+            value = ForwardRef(value, is_argument=False)
+
+        value = _eval_type(value, globalns, localns)
+        hints[name] = value
+
+    return hints

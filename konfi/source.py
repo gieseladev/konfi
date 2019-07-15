@@ -129,7 +129,6 @@ def load_field_value(obj: Any, field: konfi.Field, value: Any) -> None:
         if field.converter is None:
             converted = konfi.convert_value(value, field.value_type)
         else:
-            # TODO clean
             converted = konfi.converter._call_converter(field.converter, value, field.value_type)
     except konfi.ConversionError as e:
         raise FieldError([field.key], field, str(e)) from e

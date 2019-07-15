@@ -3,6 +3,7 @@ import functools
 import inspect
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, get_type_hints, overload
 
+from . import typeinspect
 from .converter import has_converter
 from .field import Field, MISSING, NoDefaultValue, UnboundField, upgrade_unbound
 from .source import FieldError, MultiPathError, PathError
@@ -15,11 +16,23 @@ __all__ = ["template", "is_template", "is_template_like",
 _FIELDS_ATTR = "__template_fields__"
 
 
-def _make_fields(cls: type) -> Dict[str, Field]:
+def _make_fields(cls: type, *, template_bases_only: bool = True) -> Dict[str, Field]:
     cls_fields: Dict[str, Field] = {}
 
-    # TODO handle MRO properly
-    cls_annotations = get_type_hints(cls)
+    if template_bases_only:
+        for base in cls.__mro__[:0:-1]:
+            try:
+                _fields = getattr(base, _FIELDS_ATTR)
+            except AttributeError:
+                continue
+
+            for attr, _field in _fields.items():
+                cls_fields[attr] = _field
+
+        cls_annotations = typeinspect.get_class_type_hints_strict(cls)
+    else:
+        cls_annotations = get_type_hints(cls)
+
     for attr, typ in cls_annotations.items():
         try:
             value = getattr(cls, attr)
@@ -49,12 +62,12 @@ def _make_fields(cls: type) -> Dict[str, Field]:
     return cls_fields
 
 
-def _make_template(cls: type):
-    _fields = _make_fields(cls)
+def _make_template(cls: type, *, template_bases_only: bool = True):
+    _fields = _make_fields(cls, template_bases_only=template_bases_only)
     setattr(cls, _FIELDS_ATTR, _fields)
 
 
-def template():
+def template(*, template_bases_only: bool = True):
     """Decorator to convert the given class to a template.
 
     This parses the decorated class into a template which can be used to
@@ -63,6 +76,12 @@ def template():
     has a value it is used as the default value, unless it's an unbound field
     (see `konfi.field`) which is used directly and the class variable is
     replaced.
+
+    Args:
+        template_bases_only: If set to `True` (default) only fields from
+            bases which are themselves templates are added to the template.
+            If `False`, all annotations from all bases are considered as being
+            part of the class itself.
 
     Raises:
         ValueError: If the decorated object isn't a class.
@@ -73,7 +92,7 @@ def template():
         if not inspect.isclass(cls):
             raise ValueError("decorator must be applied to a class")
 
-        _make_template(cls)
+        _make_template(cls, template_bases_only=template_bases_only)
         return cls
 
     return decorator

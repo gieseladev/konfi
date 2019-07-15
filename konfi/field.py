@@ -138,6 +138,9 @@ class Field(UnboundField):
         self.attribute = attribute
         self.value_type = value_type
 
+    def __repr__(self) -> str:
+        return f"Field(attribute={self.attribute!r}, value_type={self.value_type!r}, key={self.key!r}, comment={self.comment!r})"
+
     def __str__(self) -> str:
         key_str = f" [{self.key!r}]" if self.key != self.attribute else ""
         return f"Field({self.attribute}{key_str})"
