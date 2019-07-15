@@ -12,7 +12,7 @@ from .templ import create_object_from_template, fields, get_field, is_template, 
 # load built-in converters
 from . import converters
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Giesela Inc."
 
 default_loader = Loader()
