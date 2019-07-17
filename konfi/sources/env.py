@@ -74,7 +74,7 @@ NameBuilder.__doc__ = \
 
 def build_env_name(path: Iterable[str]) -> str:
     """Create the name of an environment variable for the given path."""
-    return "_".join(unportable_chars_pattern.sub("", part) for part in path)
+    return "_".join(unportable_chars_pattern.sub("", part) for part in path).upper()
 
 
 class Env(konfi.SourceABC):
